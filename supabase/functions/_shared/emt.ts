@@ -8,6 +8,8 @@
  * app nativa, que llama a la EMT directamente porque la EMT bloquea las IPs de la nube.
  */
 
+import { secondsUntil } from './time.ts';
+
 export const EMT_ARRIVALS_URL = 'https://www.emtvalencia.es/ciudadano/modules/mod_tiempo/busca_parada.php';
 // La EMT exige este Referer: sin él responde "Temporalmente no disponible".
 export const EMT_REFERER = 'https://www.emtvalencia.es/ciudadano/index.php';
@@ -37,25 +39,16 @@ function decodeEntities(s: string): string {
   });
 }
 
-/** Minutos que faltan para `hh:mm` en hora de Madrid. */
-function minutesUntil(hh: number, mm: number, now: Date): number | null {
-  if (typeof Intl === 'undefined' || !Intl.DateTimeFormat.prototype.formatToParts) return null;
-  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
-    .formatToParts(now)
-    .reduce<Record<string, string>>((acc, p) => ((acc[p.type] = p.value), acc), {});
-  const nowMin = Number(parts.hour) * 60 + Number(parts.minute);
-  let diff = hh * 60 + mm - nowMin;
-  if (diff < -60) diff += 24 * 60; // pasa de medianoche
-  return Math.max(0, diff);
-}
-
 export function parseValue(value: string, now = new Date()): number | null {
   const v = value.trim();
   if (/^pr[oó]xim/i.test(v)) return 0;
   const min = v.match(/(\d+)\s*min/i);
   if (min) return Number(min[1]);
   const hhmm = v.match(/^(\d{1,2}):(\d{2})/);
-  if (hhmm) return minutesUntil(Number(hhmm[1]), Number(hhmm[2]), now);
+  if (hhmm) {
+    const secs = secondsUntil(Number(hhmm[1]), Number(hhmm[2]), 0, now);
+    return secs == null ? null : Math.max(0, Math.round(secs / 60));
+  }
   return null;
 }
 

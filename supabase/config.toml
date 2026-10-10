@@ -417,3 +417,6 @@ enabled = true
 # Endpoint público de solo lectura: lo llama la app con la clave publishable (no es un JWT).
 [functions.arrivals]
 verify_jwt = false
+
+[functions.fgv-departures]
+verify_jwt = false
