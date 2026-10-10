@@ -22,8 +22,18 @@ Comprobaciones: `npm run typecheck`, `npx expo lint`, `npx expo-doctor`.
 - Desplegar: `npx supabase functions deploy <nombre> --use-api` (no necesita Docker).
 - Configuración pública en `.env.local` (copia `.env.example`).
 
+## Planificador de rutas
+
+Funciona en el propio dispositivo, sin servidor (`src/lib/router.ts`):
+- Combina tramos a pie con bus, metro y tranvía, con un transbordo como máximo.
+- Estima la espera con la frecuencia real de esa hora y ese tipo de día (laborable, sábado o domingo).
+- Une las líneas que comparten tramo (L3/L5) y descarta las opciones peores.
+- `src/lib/live-leg.ts` consulta la llegada en directo del primer vehículo, comprobando que va en el sentido correcto, y calcula el «Sal en X min».
+- La búsqueda de lugares (`src/lib/geocode.ts`) combina paradas propias, destinos populares y Photon (OpenStreetMap).
+
 ## Datos
 
+- `npm run data:network` regenera `src/data/network.json`, la red que usa el planificador de rutas (patrones, tiempos entre paradas, trazados y salidas por hora de EMT y FGV).
 - `npm run data:fgv` regenera `src/data/fgv-stations.json` (estaciones de metro y tranvía y colores oficiales de las líneas).
 - `npm run data:emt` regenera `src/data/emt-stops.json` y `emt-routes.json` desde el GTFS de EMT publicado en el CKAN del Ajuntament. Es temporal: más adelante los datos vendrán de Supabase/PostGIS.
 - Qué devuelve hoy cada API de tiempo real: [docs/apis-tiempo-real.md](docs/apis-tiempo-real.md).
