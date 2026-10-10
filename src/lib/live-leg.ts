@@ -9,14 +9,19 @@ import { getFgvDepartures } from './departures';
 import { normalize } from './geocode';
 import type { Itinerary, RideLeg } from './router';
 
+/** Margen de seguridad: llegar a la parada al menos 3 min antes de que pase el vehículo. */
+export const SAFETY_MARGIN_MIN = 3;
+
 export type LiveBoarding =
   | {
       status: 'live';
       line: string;
       /** Minutos hasta que el vehículo llega a la parada. */
       arrivesIn: number;
-      /** Minutos hasta que hay que salir (0 = ya). */
+      /** Minutos hasta que hay que salir, con el margen de seguridad incluido (0 = ya). */
       leaveIn: number;
+      /** Solo se llega andando sin margen: hay que salir ya y aun así es justo. */
+      tight: boolean;
       /** Siguientes vehículos alcanzables (min). */
       later: number[];
       /** Total del itinerario con la espera real en lugar de la estimada. */
@@ -64,21 +69,28 @@ export async function liveBoarding(it: Itinerary, signal?: AbortSignal): Promise
   // En metro/tranvía pasan ambos sentidos por el mismo andén: ahí exigimos que case.
   if (!candidates.length && leg.op === 'emt') candidates = ofOurLines;
 
-  const catchable = candidates
+  const reachable = candidates
     .map((v) => v.minutes as number)
     .filter((m) => m >= walkBefore - 0.5)
     .sort((a, b) => a - b);
   // FGV solo publica las próximas ~10 salidas de todas las líneas: que no salga la nuestra
   // no significa que no circule. Ahí caemos a la frecuencia; en EMT sí es "no viene ninguno".
-  if (!catchable.length) return { status: leg.op === 'emt' ? 'none' : 'unavailable' };
+  if (!reachable.length) return { status: leg.op === 'emt' ? 'none' : 'unavailable' };
 
-  const [arrivesIn, ...later] = catchable;
+  // Preferimos el primer vehículo que se coge con margen; si solo queda uno "a la carrera",
+  // lo mostramos igualmente como justo.
+  const withMargin = reachable.findIndex((m) => m >= walkBefore + SAFETY_MARGIN_MIN);
+  const idx = withMargin >= 0 ? withMargin : 0;
+  const tight = withMargin < 0;
+  const arrivesIn = reachable[idx];
+  const later = reachable.slice(idx + 1);
   const estimatedBoarding = walkBefore + leg.waitMin;
   return {
     status: 'live',
     line: candidates.find((v) => v.minutes === arrivesIn)?.line ?? leg.line,
     arrivesIn,
-    leaveIn: Math.max(0, Math.floor(arrivesIn - walkBefore)),
+    leaveIn: Math.max(0, Math.floor(arrivesIn - walkBefore - SAFETY_MARGIN_MIN)),
+    tight,
     later: later.slice(0, 2),
     totalMin: it.totalMin - estimatedBoarding + Math.max(arrivesIn, walkBefore),
   };

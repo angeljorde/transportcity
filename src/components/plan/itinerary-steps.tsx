@@ -35,7 +35,13 @@ export function ItinerarySteps({ it, live, originName, destinationName, now }: P
 
   return (
     <View className="px-5 pb-2 pt-1">
-      <Stop icon="radio-button-on" color={palette.accent.DEFAULT} title={originName} time={at(0)} note={leaveIn > 1 ? `Sal en ${leaveIn} min` : 'Sal ahora'} />
+      <Stop icon="radio-button-on" color={palette.accent.DEFAULT} title={originName} time={at(0)} note={
+          live?.status !== 'live'
+            ? 'Tiempos estimados por frecuencia'
+            : live.tight
+              ? 'Sal ahora: vas justo'
+              : `${leaveIn > 1 ? `Sal en ${leaveIn} min` : 'Sal ahora'} · llegas a la parada 3 min antes`
+        } />
       {steps.map(({ leg, board }, i) => (
         <LegBlock key={i} leg={leg} boardAt={at(board)} live={i === firstRideIdx ? live : undefined} next={it.legs[i + 1]} />
       ))}

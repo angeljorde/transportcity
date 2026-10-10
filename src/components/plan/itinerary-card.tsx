@@ -82,12 +82,15 @@ export function ItineraryCard({ it, live, selected, fastest, now, onPress }: Pro
 function LeaveBadge({ live, headway }: { live: LiveBoarding | undefined; headway: number }) {
   if (live?.status === 'live') {
     const now = live.leaveIn <= 1;
+    // "Justo": solo se llega sin el margen de seguridad → aviso en ámbar.
+    const bg = live.tight ? palette.metro.DEFAULT : now ? palette.accent.DEFAULT : palette.accent.soft;
+    const fg = live.tight || now ? palette.accent.ink : palette.accent.DEFAULT;
     return (
       <View className="items-end">
-        <View className="flex-row items-center gap-1.5 rounded-full px-3 py-1.5" style={{ backgroundColor: now ? palette.accent.DEFAULT : palette.accent.soft }}>
-          <Pulse color={now ? palette.accent.ink : palette.accent.DEFAULT} />
-          <Text className="font-jk-bold text-[13px]" style={{ color: now ? palette.accent.ink : palette.accent.DEFAULT }}>
-            {now ? 'Sal ya' : `Sal en ${live.leaveIn} min`}
+        <View className="flex-row items-center gap-1.5 rounded-full px-3 py-1.5" style={{ backgroundColor: bg }}>
+          <Pulse color={fg} />
+          <Text className="font-jk-bold text-[13px]" style={{ color: fg }}>
+            {live.tight ? 'Sal ya · vas justo' : now ? 'Sal ya' : `Sal en ${live.leaveIn} min`}
           </Text>
         </View>
         <Text className="mt-1 text-[11px] text-fg-subtle">
