@@ -53,7 +53,8 @@ https://opendata.vlci.valencia.es/dataset/ab058cf8-…/resource/c81b69e6-…/dow
 - **La URL cambia en cada publicación** (lleva la fecha). Hay que sacarla de `package_show?id=google-transit-lines-stops-bus-schedules` → `resources[0].url`. Se actualiza aproximadamente cada semana.
 - 50 rutas, 1134 paradas, 32 411 viajes, 796 728 `stop_times` y 27 588 puntos de shape.
 - `stop_id` == `stop_code` == `id_parada` del geoportal.
-- Codificación **Latin-1** (no UTF-8). Algunos `stop_desc` traen texto mal codificado dos veces; ese campo no se usa.
+- **La codificación cambia según el fichero**: `stops.txt` viene en UTF-8 y `routes.txt` en Latin-1. Para leerlos, se intenta primero UTF-8 en modo estricto y, si falla, Latin-1 (`scripts/build-emt-stops.mjs`). Algunos `stop_desc` traen texto mal codificado dos veces; ese campo no se usa.
+- Una misma línea tiene varios `route_id` (uno por variante).
 
 ## FGV (Metrovalencia + TRAM)
 

@@ -1,0 +1,271 @@
+{
+  "source": "https://opendata.vlci.valencia.es/dataset/ab058cf8-ad3e-4d9c-ac89-0c6367ecf351/resource/c81b69e6-c082-44dc-acc6-66fc417b4e66/download/google_transit2026-10-08.zip",
+  "feedVersion": "09-10-2026",
+  "generatedAt": "2026-10-10T16:29:06.371Z",
+  "routes": [
+    {
+      "id": "1017",
+      "line": "4",
+      "name": "Port/Natzaret - Pl. de l'Ajuntament",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1057",
+      "line": "6",
+      "name": "Torrefiel - Hospital la Fe",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1061",
+      "line": "7",
+      "name": "Mercat Central - Fta. Sant Lluís",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1066",
+      "line": "8",
+      "name": "Porta de la Mar - Malilla / Turianova",
+      "color": "#FE0000"
+    },
+    {
+      "id": "922",
+      "line": "9",
+      "name": "Estació del Nord - la Torre - Sedaví - F. Alcedo",
+      "color": "#FE0000"
+    },
+    {
+      "id": "923",
+      "line": "10",
+      "name": "Benimaclet - Sant Marcel.li",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1056",
+      "line": "11",
+      "name": "Patraix - els Orriols",
+      "color": "#FE0000"
+    },
+    {
+      "id": "827",
+      "line": "12",
+      "name": "Ciutat Art. Faller - Pl. Amèrica",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1021",
+      "line": "13",
+      "name": "La Fonteta/C.arts i Ciencies - Porta de la Mar",
+      "color": "#FE0000"
+    },
+    {
+      "id": "983",
+      "line": "14",
+      "name": "Estació del Nord - Castellar",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1022",
+      "line": "16",
+      "name": "Vinalesa - Poeta Querol",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1045",
+      "line": "18",
+      "name": "Hospital Dr. Peset - Universitats",
+      "color": "#FE0000"
+    },
+    {
+      "id": "930",
+      "line": "19",
+      "name": "Estació del Nord - la Marina /la Malva-Rosa",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1033",
+      "line": "23",
+      "name": "Porta de la Mar - Forn d'Alcedo",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1040",
+      "line": "24",
+      "name": "Porta de la Mar - el Saler / el Palmar",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1026",
+      "line": "25",
+      "name": "Porta de la Mar - el Saler / el Perelló",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1027",
+      "line": "26",
+      "name": "Moncada/Alfara - Poeta Querol",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1060",
+      "line": "27",
+      "name": "La Torre - Mercat Central",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1034",
+      "line": "28",
+      "name": "Ciutat Art. Faller - Estació del Nord",
+      "color": "#FE0000"
+    },
+    {
+      "id": "982",
+      "line": "30",
+      "name": "Natzaret - Hospital Clínic",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1053",
+      "line": "31",
+      "name": "La Patacona/la Malva-Rosa - Est. J. Sorolla",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1029",
+      "line": "32",
+      "name": "Passeig Marítim - Pl. de l'Ajuntament",
+      "color": "#FE0000"
+    },
+    {
+      "id": "935",
+      "line": "35",
+      "name": "Estació del Nord - C. Arts i Ciències/i.canàries",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1030",
+      "line": "40",
+      "name": "Universitats - Estació del Nord",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1070",
+      "line": "59",
+      "name": "Estació del Nord - la Torre / Sociópolis",
+      "color": "#FE0000"
+    },
+    {
+      "id": "966",
+      "line": "60",
+      "name": "Estació del Nord - Torrefiel",
+      "color": "#FE0000"
+    },
+    {
+      "id": "967",
+      "line": "62",
+      "name": "Benimàmet/Fira - Estació del Nord",
+      "color": "#FE0000"
+    },
+    {
+      "id": "968",
+      "line": "63",
+      "name": "Campus de Burjassot - Estació del Nord",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1076",
+      "line": "64",
+      "name": "Benicalap - Est. J. Sorolla / Hosp. la Fe",
+      "color": "#FE0000"
+    },
+    {
+      "id": "995",
+      "line": "67",
+      "name": "Estació del Nord - el Pouet / Campanar",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1058",
+      "line": "70",
+      "name": "La Fontsanta - Alboraia",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1059",
+      "line": "71",
+      "name": "La Llum - Universitats",
+      "color": "#FE0000"
+    },
+    {
+      "id": "970",
+      "line": "72",
+      "name": "Sant Isidre - Estació del Nord",
+      "color": "#FE0000"
+    },
+    {
+      "id": "962",
+      "line": "73",
+      "name": "Sant Isidre / Tres Creus - Estació del Nord",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1041",
+      "line": "81",
+      "name": "Estació del Nord - Blasco Ibañez",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1046",
+      "line": "92",
+      "name": "La Malva-Rosa - Campanar",
+      "color": "#FE0000"
+    },
+    {
+      "id": "994",
+      "line": "93",
+      "name": "Av. del Cid - Pg. Marítim",
+      "color": "#FE0000"
+    },
+    {
+      "id": "873",
+      "line": "94",
+      "name": "Campanar - Av. França",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1047",
+      "line": "95",
+      "name": "Jardí del Túria",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1054",
+      "line": "98",
+      "name": "Av. del Cid - Est. Cabanyal/Pg. Marítim",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1052",
+      "line": "99",
+      "name": "Palau de Congressos - la Malva-Rosa",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1018",
+      "line": "C1",
+      "name": "Centre Històric",
+      "color": "#FE0000"
+    },
+    {
+      "id": "996",
+      "line": "C2",
+      "name": "Circular Grans Vies",
+      "color": "#FE0000"
+    },
+    {
+      "id": "1074",
+      "line": "C3",
+      "name": "Circular Ronda Trànsits",
+      "color": "#FE0000"
+    }
+  ]
+}
