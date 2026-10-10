@@ -44,3 +44,6 @@ example
 
 # generado en postinstall
 /public/maplibre-gl-worker.mjs
+
+# Windows / OneDrive
+desktop.ini
