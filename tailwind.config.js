@@ -4,6 +4,8 @@ const { palette } = require('./src/theme/palette');
 module.exports = {
   content: ['./src/**/*.{ts,tsx}'],
   presets: [require('nativewind/preset')],
+  // La app es solo oscura; con 'media' NativeWind lanza al fijar el esquema manualmente.
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {

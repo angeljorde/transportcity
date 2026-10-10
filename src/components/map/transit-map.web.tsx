@@ -1,10 +1,13 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
+import './map.web.css';
 
 import {
+  AttributionControl,
   type FilterSpecification as GLFilter,
   type GeoJSONSource,
   type LayerSpecification as GLLayer,
   Map as MLMap,
+  setWorkerUrl,
   type StyleSpecification as GLStyle,
 } from 'maplibre-gl';
 import { useEffect, useImperativeHandle, useRef, type Ref } from 'react';
@@ -26,6 +29,9 @@ import {
 } from './layers';
 import type { TransitMapHandle, TransitMapProps } from './types';
 
+// Worker copiado a public/ en postinstall (ver scripts/copy-maplibre-worker.mjs).
+setWorkerUrl('/maplibre-gl-worker.mjs');
+
 const EMPTY: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
 
 // maplibre-gl trae su propia copia (más nueva) de la style-spec; las capas están tipadas con la
@@ -39,6 +45,7 @@ const gl = {
 export function TransitMap({
   ref,
   selectedStopId,
+  topInset,
   userLocation,
   onStopPress,
   onMapPress,
@@ -70,9 +77,12 @@ export function TransitMap({
       minZoom: 10,
       maxZoom: 19,
       pitchWithRotate: false,
-      attributionControl: { compact: true },
+      attributionControl: false,
     });
     map.current = m;
+    m.addControl(new AttributionControl({ compact: true }), 'top-right');
+    // En pantallas anchas maplibre abre la atribución desplegada; la dejamos plegada en el botón ⓘ.
+    m.once('load', () => m.getContainer().querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show'));
 
     m.on('load', () => {
       m.addSource(STOPS_SOURCE, { type: 'geojson', data: stopsGeoJSON });
@@ -129,6 +139,12 @@ export function TransitMap({
     if (ready.current) apply();
     else pendingSync.current = apply;
   }, [selectedStopId, userLocation]);
+
+  // La atribución va arriba a la derecha, por debajo de la barra de búsqueda y los chips.
+  useEffect(() => {
+    const corner = map.current?.getContainer().querySelector<HTMLElement>('.maplibregl-ctrl-top-right');
+    if (corner) corner.style.top = `${topInset}px`;
+  }, [topInset]);
 
   return <div ref={container} style={{ position: 'absolute', inset: 0, background: '#0D0F12' }} />;
 }

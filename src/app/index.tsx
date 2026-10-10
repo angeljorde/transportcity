@@ -3,6 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, useWindowDimensions, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapFab } from '@/components/map-fab';
 import { TransitMap } from '@/components/map/transit-map';
@@ -17,9 +18,12 @@ import { palette } from '@/theme/palette';
 
 const SNAP_POINTS = ['32%', '58%', '92%'];
 const NEARBY_COUNT = 15;
+/** Alto aproximado de la barra de búsqueda + chips (ver TopBar). */
+const TOP_BAR_HEIGHT = 116;
 
 export default function MapScreen() {
   const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const map = useRef<TransitMapHandle>(null);
   const sheet = useRef<BottomSheet>(null);
   const sheetPosition = useSharedValue(height);
@@ -66,6 +70,7 @@ export default function MapScreen() {
       <TransitMap
         ref={map}
         selectedStopId={selectedId}
+        topInset={insets.top + TOP_BAR_HEIGHT}
         userLocation={location}
         onStopPress={(id) => {
           const s = stopById.get(id);

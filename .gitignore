@@ -41,3 +41,6 @@ example
 # generated native folders
 /ios
 /android
+
+# generado en postinstall
+/public/maplibre-gl-worker.mjs

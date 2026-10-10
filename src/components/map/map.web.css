@@ -1,0 +1,18 @@
+/* Controles de maplibre-gl con el lenguaje visual de la app (cristal oscuro). */
+.maplibregl-ctrl.maplibregl-ctrl-attrib {
+  background: rgba(20, 22, 27, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #9aa0ab;
+  font-size: 11px;
+}
+
+.maplibregl-ctrl-attrib a {
+  color: #9aa0ab;
+}
+
+.maplibregl-ctrl-attrib-button {
+  filter: invert(1) opacity(0.7);
+  background-color: transparent !important;
+}

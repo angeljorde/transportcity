@@ -21,6 +21,7 @@ import type { TransitMapHandle, TransitMapProps } from './types';
 export function TransitMap({
   ref,
   selectedStopId,
+  topInset,
   userLocation,
   onStopPress,
   onMapPress,
@@ -45,7 +46,7 @@ export function TransitMap({
       mapStyle={darkMapStyle}
       logo={false}
       compass={false}
-      attributionPosition={{ bottom: 8, left: 8 }}
+      attributionPosition={{ top: topInset, right: 8 }}
       touchPitch={false}
       onPress={() => onMapPress?.()}
       onRegionDidChange={(e) => onCenterChange?.(e.nativeEvent.center)}>

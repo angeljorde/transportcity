@@ -19,7 +19,7 @@ export function StopDetail({ stop, meters, onClose }: Props) {
 
   return (
     <BottomSheetScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
-      <Animated.View entering={FadeIn.duration(250)} className="px-5 pt-1">
+      <Animated.View entering={FadeIn.duration(250)} style={{ paddingHorizontal: 20, paddingTop: 4 }}>
         {/* Cabecera */}
         <View className="flex-row items-start gap-4">
           <View className="h-14 w-14 items-center justify-center rounded-[18px] bg-emt">
@@ -48,31 +48,33 @@ export function StopDetail({ stop, meters, onClose }: Props) {
         </View>
 
         {/* Llegadas: hueco reservado para el tiempo real (Edge Function poll-emt). */}
-        <Animated.View entering={FadeInDown.delay(60).duration(350)} className="mt-6 overflow-hidden rounded-3xl border border-line bg-surface-raised">
-          <View className="flex-row items-center justify-between px-4 pb-2 pt-4">
-            <Text className="font-jk-bold text-[15px]">Próximas llegadas</Text>
-            <View className="flex-row items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1">
-              <View className="h-1.5 w-1.5 rounded-full bg-accent" />
-              <Text className="font-jk-semibold text-[11px] text-accent">EN DIRECTO · PRONTO</Text>
-            </View>
-          </View>
-          {stop.lines.slice(0, 3).map((l, i) => (
-            <View key={l} className={`flex-row items-center gap-3 px-4 py-3 ${i > 0 ? 'border-t border-line' : ''}`}>
-              <LineBadge line={l} />
-              <View className="flex-1 gap-1.5">
-                <Skeleton className="h-3" style={{ width: '70%', height: 12 }} />
-                <Skeleton style={{ width: '40%', height: 10 }} />
+        <Animated.View entering={FadeInDown.delay(60).duration(350)} style={{ marginTop: 24 }}>
+          <View className="overflow-hidden rounded-3xl border border-line bg-surface-raised">
+            <View className="flex-row items-center justify-between px-4 pb-2 pt-4">
+              <Text className="font-jk-bold text-[15px]">Próximas llegadas</Text>
+              <View className="flex-row items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1">
+                <View className="h-1.5 w-1.5 rounded-full bg-accent" />
+                <Text className="font-jk-semibold text-[11px] text-accent">EN DIRECTO · PRONTO</Text>
               </View>
-              <Skeleton style={{ width: 44, height: 22 }} />
             </View>
-          ))}
-          <Text className="px-4 pb-4 pt-1 text-[12px] leading-[17px] text-fg-subtle">
-            Los tiempos de llegada se conectarán con la EMT desde el backend en el siguiente paso.
-          </Text>
+            {stop.lines.slice(0, 3).map((l, i) => (
+              <View key={l} className={`flex-row items-center gap-3 px-4 py-3 ${i > 0 ? 'border-t border-line' : ''}`}>
+                <LineBadge line={l} />
+                <View className="flex-1 gap-1.5">
+                  <Skeleton className="h-3" style={{ width: '70%', height: 12 }} />
+                  <Skeleton style={{ width: '40%', height: 10 }} />
+                </View>
+                <Skeleton style={{ width: 44, height: 22 }} />
+              </View>
+            ))}
+            <Text className="px-4 pb-4 pt-1 text-[12px] leading-[17px] text-fg-subtle">
+              Los tiempos de llegada se conectarán con la EMT desde el backend en el siguiente paso.
+            </Text>
+          </View>
         </Animated.View>
 
         {/* Líneas */}
-        <Animated.View entering={FadeInDown.delay(120).duration(350)} className="mt-6">
+        <Animated.View entering={FadeInDown.delay(120).duration(350)} style={{ marginTop: 24 }}>
           <Text className="mb-2 font-jk-bold text-[13px] uppercase tracking-[1.2px] text-fg-muted">
             {stop.lines.length} {stop.lines.length === 1 ? 'línea' : 'líneas'}
           </Text>

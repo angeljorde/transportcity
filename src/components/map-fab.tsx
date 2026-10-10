@@ -25,7 +25,7 @@ export function MapFab({ sheetPosition, onLocate, active }: Props) {
   });
 
   return (
-    <Animated.View className="absolute right-4 top-0" style={style} pointerEvents="box-none">
+    <Animated.View style={[{ position: 'absolute', right: 16, top: 0 }, style]} pointerEvents="box-none">
       <Pressable onPress={onLocate} accessibilityLabel="Centrar en mi ubicación" className="active:scale-95">
         <Glass className="h-12 w-12 items-center justify-center rounded-full">
           <Ionicons name={active ? 'navigate' : 'navigate-outline'} size={20} color={active ? palette.accent.DEFAULT : palette.fg.DEFAULT} />

@@ -25,8 +25,7 @@ export function TopBar() {
   return (
     <Animated.View
       entering={FadeInDown.duration(500).springify().damping(18)}
-      className="absolute left-0 right-0 top-0"
-      style={{ paddingTop: insets.top + 8 }}
+      style={{ position: 'absolute', left: 0, right: 0, top: 0, paddingTop: insets.top + 8 }}
       pointerEvents="box-none">
       <View className="px-4" pointerEvents="box-none">
         <Glass className="flex-row items-center rounded-full py-1.5 pl-5 pr-1.5" style={shadow}>

@@ -7,6 +7,8 @@ export type TransitMapHandle = {
 
 export type TransitMapProps = {
   selectedStopId: string | null;
+  /** Alto ocupado por la UI flotante superior: la atribución del mapa se coloca justo debajo. */
+  topInset: number;
   userLocation: LngLat | null;
   onStopPress(id: string): void;
   onMapPress?(): void;
