@@ -11,6 +11,8 @@ import {
   meHaloLayer,
   ME_SOURCE,
   PLACES_SOURCE,
+  routeLayers,
+  ROUTE_SOURCE,
   selectedHaloLayer,
   selectedLayer,
   stationsLabelLayer,
@@ -26,6 +28,7 @@ export function NativeMap({
   modes,
   topInset,
   userLocation,
+  route,
   onPlacePress,
   onMapPress,
   onCenterChange,
@@ -35,6 +38,9 @@ export function NativeMap({
   useImperativeHandle(ref, () => ({
     flyTo(center, { zoom = 16, bottomInset = 0 } = {}) {
       camera.current?.flyTo({ center, zoom, padding: { bottom: bottomInset }, duration: 900 });
+    },
+    fitBounds(bounds, padding) {
+      camera.current?.fitBounds(bounds, { padding, duration: 900 });
     },
   }));
 
@@ -74,6 +80,14 @@ export function NativeMap({
         <Layer {...stationsLabelLayer(modes)} />
         <Layer {...selectedLayer(selectedKey)} />
       </GeoJSONSource>
+
+      {route && (
+        <GeoJSONSource id={ROUTE_SOURCE} data={route}>
+          {routeLayers.map((l) => (
+            <Layer key={l.id} {...l} />
+          ))}
+        </GeoJSONSource>
+      )}
 
       {me && (
         <GeoJSONSource id={ME_SOURCE} data={me}>

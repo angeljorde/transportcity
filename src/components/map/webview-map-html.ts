@@ -8,6 +8,8 @@ import {
   meHaloLayer,
   ME_SOURCE,
   PLACES_SOURCE,
+  routeLayers,
+  ROUTE_SOURCE,
   selectedHaloLayer,
   selectedLayer,
   stationsLabelLayer,
@@ -33,6 +35,8 @@ export function buildHtml(topInset: number): string {
     meSource: ME_SOURCE,
     placeLayers: [selectedHaloLayer(null), stopsLayer([]), stopsLabelLayer([]), stationsLayer([]), stationsLabelLayer([]), selectedLayer(null)],
     meLayers: [meHaloLayer, meDotLayer],
+    routeSource: ROUTE_SOURCE,
+    routeLayers,
   };
   // `</` escapado para que ningún nombre de parada cierre el <script>.
   const initJson = JSON.stringify(init).replace(/<\//g, '<\\/');
@@ -60,6 +64,8 @@ export function buildHtml(topInset: number): string {
   map.on('load', function(){
     map.addSource(I.placesSource, { type:'geojson', data:I.places });
     I.placeLayers.forEach(function(l){ map.addLayer(Object.assign({}, l, { source:I.placesSource })); });
+    map.addSource(I.routeSource, { type:'geojson', data:EMPTY });
+    I.routeLayers.forEach(function(l){ map.addLayer(Object.assign({}, l, { source:I.routeSource })); });
     map.addSource(I.meSource, { type:'geojson', data:EMPTY });
     I.meLayers.forEach(function(l){ map.addLayer(Object.assign({}, l, { source:I.meSource })); });
     var a = document.querySelector('.maplibregl-ctrl-attrib'); if (a) a.classList.remove('maplibregl-compact-show');
@@ -78,6 +84,10 @@ export function buildHtml(topInset: number): string {
       map.setFilter('stations', s.filters.stations); map.setFilter('stations-label', s.filters.stations);
       map.setFilter('selected', s.filters.selected); map.setFilter('selected-halo', s.filters.selected);
       map.getSource(I.meSource).setData(s.me ? { type:'Point', coordinates:s.me } : EMPTY);
+      map.getSource(I.routeSource).setData(s.route || EMPTY);
+    },
+    fitBounds: function(b, padding){
+      map.fitBounds(b, { padding:padding, duration:900, essential:true, maxZoom:17 });
     },
     flyTo: function(center, zoom, bottom){
       map.flyTo({ center:center, zoom:zoom, padding:{ top:0, left:0, right:0, bottom:bottom }, duration:900, essential:true });

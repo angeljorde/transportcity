@@ -15,12 +15,12 @@ import { palette } from '@/theme/palette';
 
 import { EmtArrivalsCard, FgvDeparturesCard } from './live-card';
 
-type Props = { place: Place; meters: number | null; onClose(): void };
+type Props = { place: Place; meters: number | null; onClose(): void; onDirections(): void };
 
 const lineName = (place: Place, line: string) =>
   (place.operator === 'emt' ? routeByLine.get(line)?.name : fgvLineByLine.get(line)?.name) ?? `Línea ${line}`;
 
-export function PlaceDetail({ place, meters, onClose }: Props) {
+export function PlaceDetail({ place, meters, onClose, onDirections }: Props) {
   const insets = useSafeAreaInsets();
   const mode = MODES[place.mode];
   const subtitle = place.operator === 'emt' ? `${mode.placeNoun} ${place.id}` : mode.operatorName;
@@ -57,6 +57,16 @@ export function PlaceDetail({ place, meters, onClose }: Props) {
             <Ionicons name="close" size={18} color={palette.fg.DEFAULT} />
           </Pressable>
         </View>
+
+        {/* Cómo llegar */}
+        <Pressable
+          onPress={onDirections}
+          className="mt-5 h-12 flex-row items-center justify-center gap-2 rounded-2xl bg-accent active:opacity-80">
+          <Ionicons name="navigate" size={18} color={palette.accent.ink} />
+          <Text className="font-jk-bold text-[15px]" style={{ color: palette.accent.ink }}>
+            Cómo llegar
+          </Text>
+        </Pressable>
 
         {/* Tiempo real */}
         <Animated.View entering={FadeInDown.delay(60).duration(350)} style={{ marginTop: 24 }}>

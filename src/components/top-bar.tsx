@@ -12,9 +12,9 @@ import { palette } from '@/theme/palette';
 
 const tap = () => Platform.OS !== 'web' && Haptics.selectionAsync();
 
-type Props = { modes: Mode[]; onToggleMode(mode: Mode): void };
+type Props = { modes: Mode[]; onToggleMode(mode: Mode): void; onSearch(): void };
 
-export function TopBar({ modes, onToggleMode }: Props) {
+export function TopBar({ modes, onToggleMode, onSearch }: Props) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -24,13 +24,22 @@ export function TopBar({ modes, onToggleMode }: Props) {
       pointerEvents="box-none">
       <View className="px-4" pointerEvents="box-none">
         <Glass className="flex-row items-center rounded-full py-1.5 pl-5 pr-1.5" style={shadow}>
-          <Pressable className="flex-1 flex-row items-center gap-3 py-2" onPress={tap} accessibilityRole="search">
+          <Pressable
+            className="flex-1 flex-row items-center gap-3 py-2"
+            onPress={() => {
+              tap();
+              onSearch();
+            }}
+            accessibilityRole="search">
             <Ionicons name="search" size={18} color={palette.fg.DEFAULT} />
             <Text className="font-jk-semibold text-[16px]">¿A dónde vas?</Text>
           </Pressable>
           <View className="mr-1 h-6 w-px bg-line-strong" />
           <Pressable
-            onPress={tap}
+            onPress={() => {
+              tap();
+              onSearch();
+            }}
             className="h-10 flex-row items-center gap-1.5 rounded-full bg-white/5 px-3 active:bg-white/10"
             accessibilityLabel="Salir ahora">
             <Ionicons name="time-outline" size={16} color={palette.fg.DEFAULT} />

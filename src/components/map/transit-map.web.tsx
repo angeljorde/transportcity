@@ -22,6 +22,8 @@ import {
   meHaloLayer,
   ME_SOURCE,
   PLACES_SOURCE,
+  routeLayers,
+  ROUTE_SOURCE,
   selectedHaloLayer,
   selectedLayer,
   stationsLabelLayer,
@@ -50,6 +52,7 @@ export function TransitMap({
   modes,
   topInset,
   userLocation,
+  route,
   onPlacePress,
   onMapPress,
   onCenterChange,
@@ -68,6 +71,9 @@ export function TransitMap({
   useImperativeHandle(ref, () => ({
     flyTo(center, { zoom = 16, bottomInset = 0 } = {}) {
       map.current?.flyTo({ center, zoom, padding: { top: 0, left: 0, right: 0, bottom: bottomInset }, duration: 900, essential: true });
+    },
+    fitBounds(bounds, padding) {
+      map.current?.fitBounds(bounds, { padding, duration: 900, essential: true, maxZoom: 17 });
     },
   }));
 
@@ -97,6 +103,9 @@ export function TransitMap({
       m.addLayer(gl.layer(stationsLayer([]), PLACES_SOURCE));
       m.addLayer(gl.layer(stationsLabelLayer([]), PLACES_SOURCE));
       m.addLayer(gl.layer(selectedLayer(null), PLACES_SOURCE));
+
+      m.addSource(ROUTE_SOURCE, { type: 'geojson', data: EMPTY });
+      for (const l of routeLayers) m.addLayer(gl.layer(l, ROUTE_SOURCE));
 
       m.addSource(ME_SOURCE, { type: 'geojson', data: EMPTY });
       m.addLayer(gl.layer(meHaloLayer, ME_SOURCE));
@@ -146,10 +155,11 @@ export function TransitMap({
       (m.getSource(ME_SOURCE) as GeoJSONSource | undefined)?.setData(
         userLocation ? { type: 'Point', coordinates: userLocation } : EMPTY,
       );
+      (m.getSource(ROUTE_SOURCE) as GeoJSONSource | undefined)?.setData(route ?? EMPTY);
     };
     if (ready.current) apply();
     else pendingSync.current = apply;
-  }, [selectedKey, userLocation, modesKey]);
+  }, [selectedKey, userLocation, modesKey, route]);
 
   // La atribución va arriba a la derecha, por debajo de la barra de búsqueda y los chips.
   useEffect(() => {

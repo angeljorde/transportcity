@@ -180,7 +180,7 @@ function waitAt(p: Pattern, i: number, day: DayType, minuteOfDay: number): { wai
 type Egress = { cost: number; j: number; walk: number };
 
 export function planRoutes(origin: LngLat, destination: LngLat, now = new Date()): Itinerary[] {
-  const { patterns, servedBy, transfers } = network();
+  const { servedBy, transfers } = network();
   const { day, minuteOfDay } = madridClock(now);
 
   const near = (pt: LngLat) =>

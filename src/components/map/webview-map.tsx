@@ -19,6 +19,7 @@ export function WebViewMap({
   modes,
   topInset,
   userLocation,
+  route,
   onPlacePress,
   onMapPress,
   onCenterChange,
@@ -33,11 +34,15 @@ export function WebViewMap({
     flyTo(center, { zoom = 16, bottomInset = 0 } = {}) {
       run(`window.tc && window.tc.flyTo(${JSON.stringify(center)}, ${zoom}, ${bottomInset})`);
     },
+    fitBounds(bounds, padding) {
+      run(`window.tc && window.tc.fitBounds(${JSON.stringify(bounds)}, ${JSON.stringify(padding)})`);
+    },
   }));
 
   const state = JSON.stringify({
     filters: { stops: filters.stops(modes), stations: filters.stations(modes), selected: filters.selected(selectedKey) },
     me: userLocation,
+    route: route ?? null,
   });
   useEffect(() => {
     run(`window.tc && window.tc.update(${state})`);

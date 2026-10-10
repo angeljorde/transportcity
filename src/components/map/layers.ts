@@ -6,6 +6,7 @@ import type {
   CircleLayerSpecification,
   ExpressionSpecification,
   FilterSpecification,
+  LineLayerSpecification,
   SymbolLayerSpecification,
 } from '@maplibre/maplibre-gl-style-spec';
 
@@ -150,3 +151,53 @@ export const meDotLayer: Circle = {
     'circle-stroke-width': 3,
   },
 };
+
+// ---------- ruta planificada ----------
+
+export const ROUTE_SOURCE = 'route';
+
+type Line = Omit<LineLayerSpecification, 'source'>;
+const kindIs = (k: string): FilterSpecification => ['==', ['get', 'kind'], k];
+
+export const routeLayers: (Line | Circle)[] = [
+  {
+    id: 'route-walk',
+    type: 'line',
+    filter: kindIs('walk'),
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    // Puntos (guiones de longitud 0 con extremos redondos), como en las apps de mapas.
+    paint: { 'line-color': '#E6E8EC', 'line-width': 4, 'line-dasharray': [0, 2] },
+  },
+  {
+    id: 'route-ride-casing',
+    type: 'line',
+    filter: kindIs('ride'),
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': palette.ink.DEFAULT, 'line-width': 11 },
+  },
+  {
+    id: 'route-ride',
+    type: 'line',
+    filter: kindIs('ride'),
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': ['get', 'color'], 'line-width': 6 },
+  },
+  {
+    id: 'route-stops',
+    type: 'circle',
+    filter: kindIs('stop'),
+    paint: { 'circle-color': '#FFFFFF', 'circle-radius': 5.5, 'circle-stroke-color': ['get', 'color'], 'circle-stroke-width': 3 },
+  },
+  {
+    id: 'route-origin',
+    type: 'circle',
+    filter: kindIs('origin'),
+    paint: { 'circle-color': palette.accent.DEFAULT, 'circle-radius': 7, 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 3 },
+  },
+  {
+    id: 'route-dest',
+    type: 'circle',
+    filter: kindIs('dest'),
+    paint: { 'circle-color': palette.ink.DEFAULT, 'circle-radius': 8, 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 4 },
+  },
+];
