@@ -1,98 +1,103 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import BottomSheet from '@gorhom/bottom-sheet';
+import * as Haptics from 'expo-haptics';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, useWindowDimensions, View } from 'react-native';
+import { useSharedValue } from 'react-native-reanimated';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { MapFab } from '@/components/map-fab';
+import { TransitMap } from '@/components/map/transit-map';
+import type { TransitMapHandle } from '@/components/map/types';
+import { NearbyList } from '@/components/sheet/nearby-list';
+import { StopDetail } from '@/components/sheet/stop-detail';
+import { TopBar } from '@/components/top-bar';
+import { stopById, stops, type Stop } from '@/data/emt';
+import { useUserLocation } from '@/hooks/use-user-location';
+import { distance, nearest, VALENCIA_CENTER, type LngLat } from '@/lib/geo';
+import { palette } from '@/theme/palette';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+const SNAP_POINTS = ['32%', '58%', '92%'];
+const NEARBY_COUNT = 15;
+
+export default function MapScreen() {
+  const { height } = useWindowDimensions();
+  const map = useRef<TransitMapHandle>(null);
+  const sheet = useRef<BottomSheet>(null);
+  const sheetPosition = useSharedValue(height);
+
+  const { location, status, locate } = useUserLocation();
+  const [center, setCenter] = useState<LngLat>(VALENCIA_CENTER);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const selected = selectedId ? stopById.get(selectedId) ?? null : null;
+  const origin = location ?? center;
+  const nearby = useMemo(() => nearest(stops, origin, NEARBY_COUNT), [origin]);
+
+  // Primera ubicación conocida → centramos el mapa una sola vez.
+  const centeredOnUser = useRef(false);
+  useEffect(() => {
+    if (location && !centeredOnUser.current) {
+      centeredOnUser.current = true;
+      map.current?.flyTo(location, { zoom: 15.5, bottomInset: height * 0.3 });
+    }
+  }, [location, height]);
+
+  const selectStop = useCallback(
+    (stop: Stop) => {
+      if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setSelectedId(stop.id);
+      sheet.current?.snapToIndex(1);
+      map.current?.flyTo([stop.lon, stop.lat], { zoom: 16.5, bottomInset: height * 0.55 });
+    },
+    [height],
+  );
+
+  const clearSelection = useCallback(() => {
+    setSelectedId(null);
+    sheet.current?.snapToIndex(0);
+  }, []);
+
+  const goToMe = useCallback(async () => {
+    const here = location ?? (await locate());
+    if (here) map.current?.flyTo(here, { zoom: 16, bottomInset: height * 0.3 });
+  }, [location, locate, height]);
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
+    <View className="flex-1 bg-ink">
+      <TransitMap
+        ref={map}
+        selectedStopId={selectedId}
+        userLocation={location}
+        onStopPress={(id) => {
+          const s = stopById.get(id);
+          if (s) selectStop(s);
+        }}
+        onMapPress={selectedId ? clearSelection : undefined}
+        onCenterChange={setCenter}
+      />
+
+      <TopBar />
+      <MapFab sheetPosition={sheetPosition} onLocate={goToMe} active={status === 'granted'} />
+
+      <BottomSheet
+        ref={sheet}
+        index={0}
+        snapPoints={SNAP_POINTS}
+        animatedPosition={sheetPosition}
+        enableDynamicSizing={false}
+        backgroundStyle={{ backgroundColor: palette.surface.DEFAULT, borderRadius: 28 }}
+        handleIndicatorStyle={{ backgroundColor: 'rgba(255,255,255,0.22)', width: 40, height: 5 }}
+        style={{ shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 30, shadowOffset: { width: 0, height: -6 }, elevation: 24 }}>
+        {selected ? (
+          <StopDetail
+            key={selected.id}
+            stop={selected}
+            meters={location ? distance(location, [selected.lon, selected.lat]) : null}
+            onClose={clearSelection}
+          />
+        ) : (
+          <NearbyList items={nearby} fromUser={!!location} onSelect={selectStop} />
+        )}
+      </BottomSheet>
+    </View>
   );
 }
-
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
-});
