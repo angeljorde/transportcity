@@ -58,7 +58,8 @@
     "data:emt": "node scripts/build-emt-stops.mjs",
     "typecheck": "tsc --noEmit",
     "postinstall": "node scripts/copy-maplibre-worker.mjs",
-    "data:fgv": "node scripts/build-fgv-stations.mjs"
+    "data:fgv": "node scripts/build-fgv-stations.mjs",
+    "data:network": "node scripts/build-network.mjs"
   },
   "private": true
 }
