@@ -35,6 +35,7 @@ export default function MapScreen() {
   const selected = selectedId ? stopById.get(selectedId) ?? null : null;
   const origin = location ?? center;
   const nearby = useMemo(() => nearest(stops, origin, NEARBY_COUNT), [origin]);
+  const within500 = useMemo(() => stops.filter((s) => distance(origin, [s.lon, s.lat]) <= 500).length, [origin]);
 
   // Primera ubicación conocida → centramos el mapa una sola vez.
   const centeredOnUser = useRef(false);
@@ -100,7 +101,7 @@ export default function MapScreen() {
             onClose={clearSelection}
           />
         ) : (
-          <NearbyList items={nearby} fromUser={!!location} onSelect={selectStop} />
+          <NearbyList items={nearby} within500={within500} fromUser={!!location} onSelect={selectStop} />
         )}
       </BottomSheet>
     </View>

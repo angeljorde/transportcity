@@ -11,13 +11,14 @@ type Nearby = { item: Stop; meters: number };
 
 type Props = {
   items: Nearby[];
+  /** Paradas a menos de 500 m del origen (sobre todas, no solo las listadas). */
+  within500: number;
   fromUser: boolean;
   onSelect(stop: Stop): void;
 };
 
-export function NearbyList({ items, fromUser, onSelect }: Props) {
+export function NearbyList({ items, within500, fromUser, onSelect }: Props) {
   const insets = useSafeAreaInsets();
-  const within500 = items.filter((i) => i.meters <= 500).length;
 
   return (
     <BottomSheetFlatList
