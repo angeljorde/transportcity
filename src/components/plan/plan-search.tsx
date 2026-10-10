@@ -9,11 +9,14 @@ import { Text } from '@/components/ui/text';
 import { POPULAR_DESTINATIONS } from '@/data/destinations';
 import { usePlaceSearch } from '@/hooks/use-place-search';
 import { useRecents } from '@/hooks/use-recents';
+import type { Favorite } from '@/lib/favorites';
 import { popularToResult, type PlaceResult } from '@/lib/geocode';
 import { VALENCIA_CENTER, type LngLat } from '@/lib/geo';
 import { palette } from '@/theme/palette';
 
-export type Endpoint = { name: string; coord: LngLat; isMe?: boolean };
+import type { Endpoint } from '@/lib/endpoint';
+
+export type { Endpoint };
 
 type Field = 'origin' | 'destination';
 
@@ -28,6 +31,8 @@ type Props = {
   onClose(): void;
   /** Ambos extremos listos: calcular rutas. */
   onSubmit(origin: Endpoint, destination: Endpoint): void;
+  favorites: Favorite[];
+  onPickFavorite(f: Favorite): void;
 };
 
 const ME_RESULT = (coord: LngLat): PlaceResult => ({
@@ -42,7 +47,7 @@ const ME_RESULT = (coord: LngLat): PlaceResult => ({
 
 const toEndpoint = (r: PlaceResult): Endpoint => ({ name: r.name, coord: r.coord, isMe: r.kind === 'me' });
 
-export function PlanSearch({ origin, destination, userLocation, initialField, onChange, onSwap, onClose, onSubmit }: Props) {
+export function PlanSearch({ origin, destination, userLocation, initialField, onChange, onSwap, onClose, onSubmit, favorites, onPickFavorite }: Props) {
   const insets = useSafeAreaInsets();
   const [field, setField] = useState<Field>(initialField);
   const [texts, setTexts] = useState({ origin: origin?.isMe ? '' : (origin?.name ?? ''), destination: destination?.name ?? '' });
@@ -145,6 +150,28 @@ export function PlanSearch({ origin, destination, userLocation, initialField, on
 
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: insets.bottom + 32, paddingTop: 12 }}>
         {showMeOption && <ResultRow r={ME_RESULT(userLocation)} onPress={pick} />}
+
+        {empty && favorites.length > 0 && (
+          <>
+            <SectionTitle>Tus rutas</SectionTitle>
+            {favorites.map((f) => (
+              <Pressable key={f.id} onPress={() => onPickFavorite(f)} className="mx-2 flex-row items-center gap-3.5 rounded-2xl px-4 py-3 active:bg-white/5">
+                <View className="h-10 w-10 items-center justify-center rounded-full bg-accent-soft">
+                  <Ionicons name={f.icon} size={18} color={palette.accent.DEFAULT} />
+                </View>
+                <View className="flex-1">
+                  <Text className="font-jk-semibold text-[15px]" numberOfLines={1}>
+                    {f.name}
+                  </Text>
+                  <Text className="mt-0.5 text-[12px] text-fg-muted" numberOfLines={1}>
+                    {f.origin.name} → {f.destination.name}
+                  </Text>
+                </View>
+                <Ionicons name="arrow-forward" size={16} color={palette.fg.subtle} />
+              </Pressable>
+            ))}
+          </>
+        )}
 
         {empty && (
           <>

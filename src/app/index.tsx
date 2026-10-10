@@ -5,6 +5,9 @@ import { BackHandler, Platform, useWindowDimensions, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { FavoritesStrip } from '@/components/favorites/favorites-strip';
+import { NotificationRouter } from '@/components/favorites/notification-router';
+import { SaveRouteSheet } from '@/components/favorites/save-route-sheet';
 import { MapFab } from '@/components/map-fab';
 import { TransitMap } from '@/components/map/transit-map';
 import type { TransitMapHandle } from '@/components/map/types';
@@ -16,6 +19,8 @@ import { TopBar } from '@/components/top-bar';
 import { ALL_MODES, placeByKey, places, type Mode, type Place } from '@/data/places';
 import { useLiveBoardings } from '@/hooks/use-live-boardings';
 import { useUserLocation } from '@/hooks/use-user-location';
+import { alertsSupported, cancelFavorite, scheduleFavorite } from '@/lib/alerts';
+import { favoritesStore, newFavoriteId, sameTrip, useFavorites, type Favorite } from '@/lib/favorites';
 import { distance, nearest, VALENCIA_CENTER, type LngLat } from '@/lib/geo';
 import { drawItinerary } from '@/lib/route-geo';
 import { planRoutes, type Itinerary } from '@/lib/router';
@@ -48,6 +53,10 @@ export default function MapScreen() {
   const [destination, setDestination] = useState<Endpoint | null>(null);
   const [itineraries, setItineraries] = useState<Itinerary[]>([]);
   const [selectedItId, setSelectedItId] = useState<string | null>(null);
+
+  // ---- favoritos ----
+  const favorites = useFavorites();
+  const [editing, setEditing] = useState<{ fav: Favorite; isNew: boolean } | null>(null);
 
   const me: Endpoint | null = location ? { name: 'Tu ubicación', coord: location, isMe: true } : null;
   // Si el origen es "Tu ubicación", siempre con la posición GPS más reciente.
@@ -124,6 +133,54 @@ export default function MapScreen() {
     sheet.current?.snapToIndex(0);
   }, []);
 
+  const savedFav = origin && destination ? favorites.find((f) => sameTrip(f, origin, destination)) : undefined;
+
+  const openFavorite = useCallback(
+    (f: Favorite) => {
+      const o = f.origin.isMe ? me : f.origin;
+      setOriginChoice(f.origin);
+      setDestination(f.destination);
+      if (o) plan(o, f.destination);
+      else setScreen('search');
+    },
+    // `me` cambia con cada lectura del GPS; plan() recibe la posición del momento.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [location, plan],
+  );
+
+  const saveFavorite = useCallback(async (f: Favorite) => {
+    if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setEditing(null);
+    favoritesStore.upsert(f);
+    const notificationIds = await scheduleFavorite(f).catch(() => []);
+    favoritesStore.upsert({ ...f, notificationIds });
+  }, []);
+
+  const deleteFavorite = useCallback(async (f: Favorite) => {
+    setEditing(null);
+    favoritesStore.remove(f.id);
+    await cancelFavorite(f).catch(() => {});
+  }, []);
+
+  /** Estrella del panel de rutas: guardar (borrador con valores por defecto) o editar. */
+  const startSave = useCallback(() => {
+    if (!origin || !destination) return;
+    if (savedFav) return setEditing({ fav: savedFav, isNew: false });
+    setEditing({
+      isNew: true,
+      fav: {
+        id: newFavoriteId(),
+        name: destination.name,
+        icon: 'star',
+        origin: origin.isMe ? { name: 'Tu ubicación', coord: origin.coord, isMe: true } : origin,
+        destination,
+        schedule: { enabled: alertsSupported, days: [1, 2, 3, 4, 5], time: '08:00', advanceMin: 10 },
+        notificationIds: [],
+        createdAt: Date.now(),
+      },
+    });
+  }, [origin, destination, savedFav]);
+
   /** "Cómo llegar" desde la ficha de una parada. */
   const directionsTo = useCallback(
     (place: Place) => {
@@ -187,6 +244,8 @@ export default function MapScreen() {
             onSelect={setSelectedItId}
             onEdit={() => setScreen('search')}
             onClose={closeRoutes}
+            saved={!!savedFav}
+            onSave={startSave}
           />
         ) : selected ? (
           <PlaceDetail
@@ -197,7 +256,15 @@ export default function MapScreen() {
             onDirections={() => directionsTo(selected)}
           />
         ) : (
-          <NearbyList items={nearby} within500={within500} fromUser={!!location} onSelect={selectPlace} />
+          <NearbyList
+            items={nearby}
+            within500={within500}
+            fromUser={!!location}
+            onSelect={selectPlace}
+            header={
+              <FavoritesStrip favorites={favorites} location={location} onOpen={openFavorite} onEdit={(f) => setEditing({ fav: f, isNew: false })} />
+            }
+          />
         )}
       </BottomSheet>
 
@@ -215,6 +282,27 @@ export default function MapScreen() {
           }}
           onClose={() => setScreen(itineraries.length ? 'routes' : 'map')}
           onSubmit={plan}
+          favorites={favorites}
+          onPickFavorite={openFavorite}
+        />
+      )}
+
+      {editing && (
+        <SaveRouteSheet
+          favorite={editing.fav}
+          isNew={editing.isNew}
+          onSave={saveFavorite}
+          onDelete={deleteFavorite}
+          onClose={() => setEditing(null)}
+        />
+      )}
+
+      {alertsSupported && (
+        <NotificationRouter
+          onFavorite={(id) => {
+            const f = favoritesStore.get().find((x) => x.id === id);
+            if (f) openFavorite(f);
+          }}
         />
       )}
     </View>

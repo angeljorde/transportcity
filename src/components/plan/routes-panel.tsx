@@ -23,6 +23,8 @@ type Props = {
   onSelect(id: string): void;
   onEdit(): void;
   onClose(): void;
+  saved: boolean;
+  onSave(): void;
 };
 
 const liveTotal = (it: Itinerary, live: Map<string, LiveBoarding>) => {
@@ -30,7 +32,7 @@ const liveTotal = (it: Itinerary, live: Map<string, LiveBoarding>) => {
   return l?.status === 'live' ? l.totalMin : it.totalMin;
 };
 
-export function RoutesPanel({ origin, destination, itineraries, live, selectedId, onSelect, onEdit, onClose }: Props) {
+export function RoutesPanel({ origin, destination, itineraries, live, selectedId, onSelect, onEdit, onClose, saved, onSave }: Props) {
   const insets = useSafeAreaInsets();
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -66,6 +68,13 @@ export function RoutesPanel({ origin, destination, itineraries, live, selectedId
               </Text>
             </View>
             <Ionicons name="pencil" size={15} color={palette.fg.muted} />
+          </Pressable>
+          <Pressable
+            onPress={onSave}
+            accessibilityLabel={saved ? 'Editar ruta guardada' : 'Guardar ruta'}
+            className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
+            style={{ backgroundColor: saved ? palette.accent.soft : 'rgba(255,255,255,0.1)' }}>
+            <Ionicons name={saved ? 'star' : 'star-outline'} size={19} color={saved ? palette.accent.DEFAULT : palette.fg.DEFAULT} />
           </Pressable>
           <Pressable onPress={onClose} accessibilityLabel="Cerrar rutas" className="h-11 w-11 items-center justify-center rounded-full bg-white/10 active:bg-white/20">
             <Ionicons name="close" size={20} color={palette.fg.DEFAULT} />

@@ -1,4 +1,5 @@
 import { BottomSheetFlatList } from '@gorhom/bottom-sheet';
+import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -15,9 +16,11 @@ type Props = {
   within500: number;
   fromUser: boolean;
   onSelect(place: Place): void;
+  /** Contenido sobre la lista (p. ej. «Tus rutas»). */
+  header?: ReactNode;
 };
 
-export function NearbyList({ items, within500, fromUser, onSelect }: Props) {
+export function NearbyList({ items, within500, fromUser, onSelect, header }: Props) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -26,13 +29,16 @@ export function NearbyList({ items, within500, fromUser, onSelect }: Props) {
       keyExtractor={(i: Nearby) => i.item.key}
       contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: insets.bottom + 24 }}
       ListHeaderComponent={
-        <View className="px-3 pb-2 pt-1">
-          <Text className="font-jk-bold text-[22px] tracking-tight">{fromUser ? 'Cerca de ti' : 'En esta zona'}</Text>
-          <Text className="mt-0.5 font-jk-medium text-[13px] text-fg-muted">
-            {within500 > 0
-              ? `${within500} ${within500 === 1 ? 'parada' : 'paradas'} a menos de 500 m`
-              : 'Paradas y estaciones más próximas'}
-          </Text>
+        <View>
+          {header}
+          <View className="px-3 pb-2 pt-1">
+            <Text className="font-jk-bold text-[22px] tracking-tight">{fromUser ? 'Cerca de ti' : 'En esta zona'}</Text>
+            <Text className="mt-0.5 font-jk-medium text-[13px] text-fg-muted">
+              {within500 > 0
+                ? `${within500} ${within500 === 1 ? 'parada' : 'paradas'} a menos de 500 m`
+                : 'Paradas y estaciones más próximas'}
+            </Text>
+          </View>
         </View>
       }
       ListEmptyComponent={
