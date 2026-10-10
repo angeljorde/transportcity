@@ -1,0 +1,83 @@
+/**
+ * "Sal en X min": para el primer vehículo de un itinerario, busca su llegada en tiempo
+ * real a la parada de subida y calcula cuándo hay que salir para no perderlo.
+ */
+import { placeByKey } from '@/data/places';
+
+import { getEmtArrivals } from './arrivals';
+import { getFgvDepartures } from './departures';
+import { normalize } from './geocode';
+import type { Itinerary, RideLeg } from './router';
+
+export type LiveBoarding =
+  | {
+      status: 'live';
+      line: string;
+      /** Minutos hasta que el vehículo llega a la parada. */
+      arrivesIn: number;
+      /** Minutos hasta que hay que salir (0 = ya). */
+      leaveIn: number;
+      /** Siguientes vehículos alcanzables (min). */
+      later: number[];
+      /** Total del itinerario con la espera real en lugar de la estimada. */
+      totalMin: number;
+    }
+  | { status: 'none' } // no hay ningún vehículo de esas líneas en camino
+  | { status: 'unavailable' }; // sin datos en tiempo real (p. ej. EMT en web)
+
+/** ¿El destino que anuncia el vehículo está más adelante en nuestro recorrido? (sentido correcto) */
+function goesOurWay(leg: RideLeg, destination: string): boolean {
+  const d = normalize(destination);
+  if (!d) return false;
+  const ahead = [leg.pattern.headsign, ...leg.pattern.stops.slice(leg.fromIdx + 1).map((k) => placeByKey.get(k)?.name ?? '')];
+  const dWords = d.split(' ').filter((w) => w.length >= 4);
+  return ahead.some((name) => {
+    const n = normalize(name);
+    if (!n) return false;
+    if (n.includes(d) || d.includes(n)) return true;
+    // Abreviaturas de la EMT ("Est.J.Sorolla", "P. Ajuntament"): basta con una palabra significativa.
+    return dWords.some((w) => n.split(' ').includes(w));
+  });
+}
+
+export async function liveBoarding(it: Itinerary, signal?: AbortSignal): Promise<LiveBoarding> {
+  const firstRide = it.legs.findIndex((l) => l.kind === 'ride');
+  if (firstRide < 0) return { status: 'unavailable' };
+  const leg = it.legs[firstRide] as RideLeg;
+  const walkBefore = it.legs.slice(0, firstRide).reduce((acc, l) => acc + (l.kind === 'walk' ? l.minutes : 0), 0);
+  const stopId = leg.fromKey.split(':')[1];
+
+  let vehicles: { line: string; destination: string; minutes: number | null }[];
+  try {
+    vehicles =
+      leg.op === 'emt'
+        ? (await getEmtArrivals(stopId, signal)).arrivals
+        : (await getFgvDepartures(stopId, signal)).departures;
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') throw e;
+    return { status: 'unavailable' };
+  }
+
+  const ofOurLines = vehicles.filter((v) => leg.lines.includes(v.line) && v.minutes != null);
+  let candidates = ofOurLines.filter((v) => goesOurWay(leg, v.destination));
+  // En EMT cada parada suele estar en un solo sentido: si no casa el nombre, aceptamos la línea.
+  // En metro/tranvía pasan ambos sentidos por el mismo andén: ahí exigimos que case.
+  if (!candidates.length && leg.op === 'emt') candidates = ofOurLines;
+
+  const catchable = candidates
+    .map((v) => v.minutes as number)
+    .filter((m) => m >= walkBefore - 0.5)
+    .sort((a, b) => a - b);
+  if (!catchable.length) return { status: 'none' };
+
+  const [arrivesIn, ...later] = catchable;
+  const estimatedBoarding = walkBefore + leg.waitMin;
+  return {
+    status: 'live',
+    line: candidates.find((v) => v.minutes === arrivesIn)?.line ?? leg.line,
+    arrivesIn,
+    leaveIn: Math.max(0, Math.floor(arrivesIn - walkBefore)),
+    later: later.slice(0, 2),
+    totalMin: it.totalMin - estimatedBoarding + Math.max(arrivesIn, walkBefore),
+  };
+}
