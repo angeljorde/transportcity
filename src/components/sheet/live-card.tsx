@@ -8,6 +8,7 @@ import { Text } from '@/components/ui/text';
 import { usePolling } from '@/hooks/use-polling';
 import { getEmtArrivals, groupArrivals, type ArrivalGroup } from '@/lib/arrivals';
 import { getFgvDepartures, groupDepartures } from '@/lib/departures';
+import { FunctionError } from '@/lib/supabase';
 import { palette } from '@/theme/palette';
 
 import { Skeleton } from './skeleton';
@@ -18,25 +19,36 @@ const COLLAPSED_GROUPS = 6;
 type Operator = 'emt' | 'fgv';
 type NoticeProps = { icon: keyof typeof Ionicons.glyphMap; title: string; body: string };
 
+/** Si falta la configuración de Supabase, mejor decirlo claro que mostrar "sin conexión". */
+const configNotice = (error: Error | null): NoticeProps | null =>
+  error instanceof FunctionError && error.code === 'config'
+    ? {
+        icon: 'construct-outline',
+        title: 'Falta la configuración de Supabase',
+        body: 'Crea .env.local (ver .env.example) y reinicia con: npx expo start --clear',
+      }
+    : null;
+
+function emtNotice(webBlocked: boolean, error: Error | null, status: string | undefined): NoticeProps | null {
+  if (webBlocked) {
+    return {
+      icon: 'phone-portrait-outline',
+      title: 'Disponible en la app móvil',
+      body: 'La EMT no permite consultar los tiempos desde la web. En iOS y Android se ven en directo.',
+    };
+  }
+  if (error && status == null) return { icon: 'cloud-offline-outline', title: 'No hemos podido conectar con la EMT', body: 'Reintentando automáticamente…' };
+  if (status === 'empty') return { icon: 'moon-outline', title: 'Sin estimaciones ahora mismo', body: 'Puede que estas líneas no estén en servicio a esta hora.' };
+  if (status === 'unavailable') return { icon: 'hourglass-outline', title: 'La EMT no da tiempos ahora', body: 'Suele ser momentáneo; lo volvemos a intentar en unos segundos.' };
+  return null;
+}
+
 /** Llegadas de EMT: en directo (estimación de la propia EMT). */
 export function EmtArrivalsCard({ stopId, lines }: { stopId: string; lines: string[] }) {
   const { data, error, loading, updatedAt } = usePolling(`emt:${stopId}`, (signal) => getEmtArrivals(stopId, signal), REFRESH_MS);
   const webBlocked = Platform.OS === 'web' && !!error && !data;
 
-  let notice: NoticeProps | null = null;
-  if (webBlocked) {
-    notice = {
-      icon: 'phone-portrait-outline',
-      title: 'Disponible en la app móvil',
-      body: 'La EMT no permite consultar los tiempos desde la web. En iOS y Android se ven en directo.',
-    };
-  } else if (error && !data) {
-    notice = { icon: 'cloud-offline-outline', title: 'No hemos podido conectar con la EMT', body: 'Reintentando automáticamente…' };
-  } else if (data?.status === 'empty') {
-    notice = { icon: 'moon-outline', title: 'Sin estimaciones ahora mismo', body: 'Puede que estas líneas no estén en servicio a esta hora.' };
-  } else if (data?.status === 'unavailable') {
-    notice = { icon: 'hourglass-outline', title: 'La EMT no da tiempos ahora', body: 'Suele ser momentáneo; lo volvemos a intentar en unos segundos.' };
-  }
+  const notice = configNotice(error) ?? emtNotice(webBlocked, error, data?.status);
 
   return (
     <LiveCard
@@ -62,10 +74,10 @@ export function EmtArrivalsCard({ stopId, lines }: { stopId: string; lines: stri
 export function FgvDeparturesCard({ stationId, lines }: { stationId: string; lines: string[] }) {
   const { data, error, loading, updatedAt } = usePolling(`fgv:${stationId}`, (signal) => getFgvDepartures(stationId, signal), REFRESH_MS);
 
-  let notice: NoticeProps | null = null;
-  if (error && !data) {
+  let notice = configNotice(error);
+  if (!notice && error && !data) {
     notice = { icon: 'cloud-offline-outline', title: 'No hemos podido conectar con FGV', body: 'Reintentando automáticamente…' };
-  } else if (data?.status === 'empty') {
+  } else if (!notice && data?.status === 'empty') {
     notice = { icon: 'moon-outline', title: 'Sin salidas próximas', body: 'Puede que el servicio haya terminado por hoy.' };
   }
 
