@@ -6,20 +6,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Glass } from '@/components/ui/glass';
 import { Text } from '@/components/ui/text';
+import { ALL_MODES, type Mode } from '@/data/places';
+import { MODES } from '@/theme/modes';
 import { palette } from '@/theme/palette';
-
-type Mode = { key: string; label: string; color: string; icon: keyof typeof Ionicons.glyphMap; ready: boolean };
-
-const MODES: Mode[] = [
-  { key: 'emt', label: 'Bus EMT', color: palette.emt.DEFAULT, icon: 'bus', ready: true },
-  { key: 'metro', label: 'Metro', color: palette.metro.DEFAULT, icon: 'subway', ready: false },
-  { key: 'tram', label: 'Tranvía', color: palette.tram.DEFAULT, icon: 'train', ready: false },
-  { key: 'bike', label: 'Valenbisi', color: palette.bike.DEFAULT, icon: 'bicycle', ready: false },
-];
 
 const tap = () => Platform.OS !== 'web' && Haptics.selectionAsync();
 
-export function TopBar() {
+type Props = { modes: Mode[]; onToggleMode(mode: Mode): void };
+
+export function TopBar({ modes, onToggleMode }: Props) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -50,17 +45,36 @@ export function TopBar() {
         showsHorizontalScrollIndicator={false}
         contentContainerClassName="gap-2 px-4 pt-3 pb-2"
         className="flex-grow-0">
-        {MODES.map((m) => (
-          <Pressable key={m.key} onPress={tap} disabled={!m.ready}>
-            <Glass className="h-9 flex-row items-center gap-2 rounded-full pl-2.5 pr-3.5" style={!m.ready && { opacity: 0.55 }}>
-              <View className="h-5 w-5 items-center justify-center rounded-full" style={{ backgroundColor: m.color }}>
-                <Ionicons name={m.icon} size={11} color="#fff" />
-              </View>
-              <Text className="font-jk-semibold text-[13px]">{m.label}</Text>
-              {!m.ready && <Text className="font-jk-medium text-[10px] uppercase tracking-wider text-fg-muted">Pronto</Text>}
-            </Glass>
-          </Pressable>
-        ))}
+        {ALL_MODES.map((key) => {
+          const m = MODES[key];
+          const on = modes.includes(key);
+          return (
+            <Pressable
+              key={key}
+              onPress={() => {
+                tap();
+                onToggleMode(key);
+              }}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: on }}
+              accessibilityLabel={m.label}>
+              <Glass className="h-9 flex-row items-center gap-2 rounded-full pl-2.5 pr-3.5" style={on ? { borderColor: m.color + '66' } : undefined}>
+                <View className="h-5 w-5 items-center justify-center rounded-full" style={{ backgroundColor: on ? m.color : 'rgba(255,255,255,0.12)' }}>
+                  <Ionicons name={m.icon} size={11} color={on ? m.onColor : palette.fg.muted} />
+                </View>
+                <Text className={`font-jk-semibold text-[13px] ${on ? '' : 'text-fg-muted'}`}>{m.label}</Text>
+              </Glass>
+            </Pressable>
+          );
+        })}
+        {/* Valenbisi: siguiente fase. */}
+        <Glass className="h-9 flex-row items-center gap-2 rounded-full pl-2.5 pr-3.5" style={{ opacity: 0.55 }}>
+          <View className="h-5 w-5 items-center justify-center rounded-full" style={{ backgroundColor: palette.bike.DEFAULT }}>
+            <Ionicons name="bicycle" size={11} color="#fff" />
+          </View>
+          <Text className="font-jk-semibold text-[13px]">Valenbisi</Text>
+          <Text className="font-jk-medium text-[10px] uppercase tracking-wider text-fg-muted">Pronto</Text>
+        </Glass>
       </ScrollView>
     </Animated.View>
   );

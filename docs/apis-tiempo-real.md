@@ -5,7 +5,7 @@ Resumen de lo que responde cada fuente a día de hoy y cómo la vamos a consumir
 | Fuente | Endpoint | Formato | Auth | Estado |
 |---|---|---|---|---|
 | EMT · paradas | Geoportal ArcGIS, capa `Trafico/MapServer/226` | GeoJSON / JSON | No | ✅ 1155 paradas |
-| EMT · llegadas | `emtvalencia.es/.../mod_tiempo/busca_parada.php` (POST) | Fragmento HTML (ISO-8859-1) | Cookie de sesión | ✅ con sesión |
+| EMT · llegadas | `emtvalencia.es/.../mod_tiempo/busca_parada.php` (POST) | Fragmento HTML (UTF-8) | Cabecera `Referer` | ✅ desde móvil/casa · ❌ desde la nube |
 | EMT · GTFS | CKAN `google-transit-lines-stops-bus-schedules` | ZIP GTFS (Latin-1) | No | ✅ con `shapes.txt` |
 | FGV · estaciones | Geoportal ArcGIS, capa `Trafico/MapServer/221` | GeoJSON / JSON | No | ✅ 143 estaciones |
 | FGV · salidas | `geoportal.valencia.es/geoportal-services/api/v1/salidas-metro.html` | HTML | No | ✅ metro y tranvía |
@@ -41,8 +41,9 @@ parada=2277&adaptados=0&idioma=es&usuario=Anonimo
 <span class="imagenParada"><img src="…/line-icons/62bigW.gif" title="62" …></span>
 <span class="llegadaHome">&nbsp;&nbsp;Benimàmet - 2 min.</span><br>
 ```
-- **Necesita cookie de sesión.** Si no la lleva, responde `Temporalmente no disponible…`. Basta con hacer antes un `GET /ciudadano/index.php` y reutilizar la cookie (`PHPSESSID`).
-- Codificación ISO-8859-1. Los valores posibles son `Próximo`, `N min.` y, de forma ocasional, una hora `HH:MM`.
+- **Lo que exige es el `Referer`** `https://www.emtvalencia.es/ciudadano/index.php`, no una cookie (corregido el 10/10/2026: `index.php` ahora redirige a `/wp/` y no fija sesión). Sin él responde `Temporalmente no disponible…`.
+- **La EMT descarta las conexiones que vienen de IPs de la nube.** Desde Supabase (AWS) la conexión TCP agota el tiempo de espera, tanto por HTTP como por HTTPS, mientras que el geoportal y example.com responden en menos de 150 ms. Desde una IP doméstica o móvil responde con normalidad. Por eso la app nativa consulta la EMT directamente y en web no hay tiempos de la EMT.
+- Respuesta en UTF-8. Los valores posibles son `Próximo`, `N min.` y, de forma ocasional, una hora `HH:MM`. Si la respuesta viene vacía, no hay estimaciones (línea fuera de servicio o parada inexistente).
 - Hay que llamarlo parada a parada → para el sondeo hay que repartir las ~1150 paradas en lotes (ver notas de backend).
 - No hay GPS ni identificador de vehículo: la posición se tiene que estimar a partir del ETA y el shape del GTFS.
 
@@ -72,7 +73,8 @@ GET https://geoportal.valencia.es/geoportal-services/api/v1/salidas-metro.html?e
 ```html
 <span>1 - Torrent - Bétera</span>, <span>Destino</span> <b>Bétera</b> - <span>18:22:00</span>
 ```
-- HTML con la línea, la ruta, el destino y la **hora absoluta** `HH:MM:SS`.
+- HTML con la línea, la ruta, el destino y la **hora absoluta** `HH:MM:SS`. Responde con normalidad desde Supabase (Edge Function `fgv-departures`).
+- El `title` de la imagen no es fiable (pone "1" en trenes de la L2): la línea se saca del texto de la ruta. Cada tren aparece una vez por cada variante de ruta, así que hay que deduplicar. Si la estación no existe, responde HTTP 500.
 - Funciona tanto para metro como para tranvía (probado con Trànsits, línea 4).
 - Las variantes `.json` y sin extensión responden `{}`, así que hay que parsear el HTML.
 - Queda pendiente averiguar si las horas son previsión real o el horario teórico. Para saberlo, hay que compararlas con el GTFS durante varios días.
@@ -97,8 +99,9 @@ GET https://geoportal.valencia.es/server/rest/services/OPENDATA/Trafico/MapServe
 
 ## Consecuencias para el backend
 
+0. **Hecho:** Edge Functions `arrivals` (EMT, bloqueada desde la nube) y `fgv-departures` (metro y tranvía, operativa). Parsers compartidos con la app en `supabase/functions/_shared/`.
 1. **Edge Function `ingest-gtfs`** (diaria): descarga los dos GTFS (resolviendo la URL de EMT vía CKAN), los decodifica como Latin-1 y los carga en PostGIS (`stops`, `routes`, `trips`, `stop_times`, `shapes` como `LineString`).
-2. **Edge Function `poll-emt`**: mantiene la cookie de sesión y consulta las paradas por lotes. Si se consultan todas cada 30 s salen unas 40 peticiones por segundo, así que conviene priorizar: paradas con favoritos o usuarios cerca, cabeceras y puntos de control de cada línea.
+2. **Sondeo de EMT en servidor (`poll-emt`)**: requiere una salida que la EMT no bloquee (ver bloqueo arriba). Consulta las paradas por lotes. Si se consultan todas cada 30 s salen unas 40 peticiones por segundo, así que conviene priorizar: paradas con favoritos o usuarios cerca, cabeceras y puntos de control de cada línea.
 3. **Edge Function `poll-fgv`**: 143 estaciones, sin cookie.
 4. **Estimación de posición**: para cada pareja (línea, destino) se cruza el ETA de paradas consecutivas con los `stop_times` y el shape, y se interpola la posición a lo largo del `LineString`. El resultado se publica por Realtime.
 5. Ser respetuosos con las fuentes: user-agent identificable, caché y backoff.

@@ -9,9 +9,9 @@ import { MapFab } from '@/components/map-fab';
 import { TransitMap } from '@/components/map/transit-map';
 import type { TransitMapHandle } from '@/components/map/types';
 import { NearbyList } from '@/components/sheet/nearby-list';
-import { StopDetail } from '@/components/sheet/stop-detail';
+import { PlaceDetail } from '@/components/sheet/place-detail';
 import { TopBar } from '@/components/top-bar';
-import { stopById, stops, type Stop } from '@/data/emt';
+import { ALL_MODES, placeByKey, places, type Mode, type Place } from '@/data/places';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { distance, nearest, VALENCIA_CENTER, type LngLat } from '@/lib/geo';
 import { palette } from '@/theme/palette';
@@ -30,12 +30,21 @@ export default function MapScreen() {
 
   const { location, status, locate } = useUserLocation();
   const [center, setCenter] = useState<LngLat>(VALENCIA_CENTER);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [modes, setModes] = useState<Mode[]>(ALL_MODES);
 
-  const selected = selectedId ? stopById.get(selectedId) ?? null : null;
+  const selected = selectedKey ? placeByKey.get(selectedKey) ?? null : null;
   const origin = location ?? center;
-  const nearby = useMemo(() => nearest(stops, origin, NEARBY_COUNT), [origin]);
-  const within500 = useMemo(() => stops.filter((s) => distance(origin, [s.lon, s.lat]) <= 500).length, [origin]);
+  const visiblePlaces = useMemo(() => places.filter((p) => modes.includes(p.mode)), [modes]);
+  const nearby = useMemo(() => nearest(visiblePlaces, origin, NEARBY_COUNT), [visiblePlaces, origin]);
+  const within500 = useMemo(
+    () => visiblePlaces.filter((p) => distance(origin, [p.lon, p.lat]) <= 500).length,
+    [visiblePlaces, origin],
+  );
+
+  const toggleMode = useCallback((mode: Mode) => {
+    setModes((m) => (m.includes(mode) ? m.filter((x) => x !== mode) : ALL_MODES.filter((x) => x === mode || m.includes(x))));
+  }, []);
 
   // Primera ubicación conocida → centramos el mapa una sola vez.
   const centeredOnUser = useRef(false);
@@ -46,18 +55,18 @@ export default function MapScreen() {
     }
   }, [location, height]);
 
-  const selectStop = useCallback(
-    (stop: Stop) => {
+  const selectPlace = useCallback(
+    (place: Place) => {
       if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setSelectedId(stop.id);
+      setSelectedKey(place.key);
       sheet.current?.snapToIndex(1);
-      map.current?.flyTo([stop.lon, stop.lat], { zoom: 16.5, bottomInset: height * 0.55 });
+      map.current?.flyTo([place.lon, place.lat], { zoom: 16.5, bottomInset: height * 0.55 });
     },
     [height],
   );
 
   const clearSelection = useCallback(() => {
-    setSelectedId(null);
+    setSelectedKey(null);
     sheet.current?.snapToIndex(0);
   }, []);
 
@@ -70,18 +79,19 @@ export default function MapScreen() {
     <View className="flex-1 bg-ink">
       <TransitMap
         ref={map}
-        selectedStopId={selectedId}
+        selectedKey={selectedKey}
+        modes={modes}
         topInset={insets.top + TOP_BAR_HEIGHT}
         userLocation={location}
-        onStopPress={(id) => {
-          const s = stopById.get(id);
-          if (s) selectStop(s);
+        onPlacePress={(key) => {
+          const p = placeByKey.get(key);
+          if (p) selectPlace(p);
         }}
-        onMapPress={selectedId ? clearSelection : undefined}
+        onMapPress={selectedKey ? clearSelection : undefined}
         onCenterChange={setCenter}
       />
 
-      <TopBar />
+      <TopBar modes={modes} onToggleMode={toggleMode} />
       <MapFab sheetPosition={sheetPosition} onLocate={goToMe} active={status === 'granted'} />
 
       <BottomSheet
@@ -94,14 +104,14 @@ export default function MapScreen() {
         handleIndicatorStyle={{ backgroundColor: 'rgba(255,255,255,0.22)', width: 40, height: 5 }}
         style={{ shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 30, shadowOffset: { width: 0, height: -6 }, elevation: 24 }}>
         {selected ? (
-          <StopDetail
-            key={selected.id}
-            stop={selected}
+          <PlaceDetail
+            key={selected.key}
+            place={selected}
             meters={location ? distance(location, [selected.lon, selected.lat]) : null}
             onClose={clearSelection}
           />
         ) : (
-          <NearbyList items={nearby} within500={within500} fromUser={!!location} onSelect={selectStop} />
+          <NearbyList items={nearby} within500={within500} fromUser={!!location} onSelect={selectPlace} />
         )}
       </BottomSheet>
     </View>

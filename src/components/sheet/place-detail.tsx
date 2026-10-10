@@ -6,31 +6,39 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LineBadge } from '@/components/ui/line-badge';
 import { Text } from '@/components/ui/text';
-import { routeByLine, type Stop } from '@/data/emt';
+import { routeByLine } from '@/data/emt';
+import { fgvLineByLine } from '@/data/fgv';
+import type { Place } from '@/data/places';
 import { formatDistance, walkingMinutes } from '@/lib/geo';
+import { MODES } from '@/theme/modes';
 import { palette } from '@/theme/palette';
 
-import { ArrivalsCard } from './arrivals-card';
+import { EmtArrivalsCard, FgvDeparturesCard } from './live-card';
 
-type Props = { stop: Stop; meters: number | null; onClose(): void };
+type Props = { place: Place; meters: number | null; onClose(): void };
 
-export function StopDetail({ stop, meters, onClose }: Props) {
+const lineName = (place: Place, line: string) =>
+  (place.operator === 'emt' ? routeByLine.get(line)?.name : fgvLineByLine.get(line)?.name) ?? `Línea ${line}`;
+
+export function PlaceDetail({ place, meters, onClose }: Props) {
   const insets = useSafeAreaInsets();
+  const mode = MODES[place.mode];
+  const subtitle = place.operator === 'emt' ? `${mode.placeNoun} ${place.id}` : mode.operatorName;
 
   return (
     <BottomSheetScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
       <Animated.View entering={FadeIn.duration(250)} style={{ paddingHorizontal: 20, paddingTop: 4 }}>
         {/* Cabecera */}
         <View className="flex-row items-start gap-4">
-          <View className="h-14 w-14 items-center justify-center rounded-[18px] bg-emt">
-            <Ionicons name="bus" size={26} color="#fff" />
+          <View className="h-14 w-14 items-center justify-center rounded-[18px]" style={{ backgroundColor: mode.color }}>
+            <Ionicons name={mode.icon} size={26} color={mode.onColor} />
           </View>
           <View className="flex-1 gap-1 pt-0.5">
             <Text className="font-jk-bold text-[21px] leading-[26px]" numberOfLines={2}>
-              {stop.name}
+              {place.name}
             </Text>
-            <View className="flex-row items-center gap-2">
-              <Text className="font-jk-medium text-[13px] text-fg-muted">Parada {stop.id}</Text>
+            <View className="flex-row flex-wrap items-center gap-2">
+              <Text className="font-jk-medium text-[13px] text-fg-muted">{subtitle}</Text>
               {meters != null && (
                 <>
                   <View className="h-1 w-1 rounded-full bg-fg-subtle" />
@@ -42,27 +50,34 @@ export function StopDetail({ stop, meters, onClose }: Props) {
               )}
             </View>
           </View>
-          <Pressable onPress={onClose} accessibilityLabel="Cerrar" className="h-9 w-9 items-center justify-center rounded-full bg-white/10 active:bg-white/20">
+          <Pressable
+            onPress={onClose}
+            accessibilityLabel="Cerrar"
+            className="h-9 w-9 items-center justify-center rounded-full bg-white/10 active:bg-white/20">
             <Ionicons name="close" size={18} color={palette.fg.DEFAULT} />
           </Pressable>
         </View>
 
-        {/* Llegadas en tiempo real */}
+        {/* Tiempo real */}
         <Animated.View entering={FadeInDown.delay(60).duration(350)} style={{ marginTop: 24 }}>
-          <ArrivalsCard stopId={stop.id} lines={stop.lines} />
+          {place.operator === 'emt' ? (
+            <EmtArrivalsCard stopId={place.id} lines={place.lines} />
+          ) : (
+            <FgvDeparturesCard stationId={place.id} lines={place.lines} />
+          )}
         </Animated.View>
 
         {/* Líneas */}
         <Animated.View entering={FadeInDown.delay(120).duration(350)} style={{ marginTop: 24 }}>
           <Text className="mb-2 font-jk-bold text-[13px] uppercase tracking-[1.2px] text-fg-muted">
-            {stop.lines.length} {stop.lines.length === 1 ? 'línea' : 'líneas'}
+            {place.lines.length} {place.lines.length === 1 ? 'línea' : 'líneas'}
           </Text>
           <View className="overflow-hidden rounded-3xl border border-line bg-surface-raised">
-            {stop.lines.map((l, i) => (
+            {place.lines.map((l, i) => (
               <View key={l} className={`flex-row items-center gap-3 px-4 py-3 ${i > 0 ? 'border-t border-line' : ''}`}>
-                <LineBadge line={l} />
+                <LineBadge line={l} operator={place.operator} />
                 <Text className="flex-1 font-jk-medium text-[14px]" numberOfLines={1}>
-                  {routeByLine.get(l)?.name ?? `Línea ${l}`}
+                  {lineName(place, l)}
                 </Text>
                 <Ionicons name="chevron-forward" size={16} color={palette.fg.subtle} />
               </View>

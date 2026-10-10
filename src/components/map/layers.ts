@@ -9,22 +9,42 @@ import type {
   SymbolLayerSpecification,
 } from '@maplibre/maplibre-gl-style-spec';
 
+import type { Mode } from '@/data/places';
 import { palette } from '@/theme/palette';
 
-export const STOPS_SOURCE = 'emt-stops';
+export const PLACES_SOURCE = 'places';
 export const ME_SOURCE = 'me';
 
 type Circle = Omit<CircleLayerSpecification, 'source'>;
 type Symbol = Omit<SymbolLayerSpecification, 'source'>;
 
-export const selectedFilter = (id: string | null): FilterSpecification => ['==', ['get', 'id'], id ?? '__none__'];
+const modeColor: ExpressionSpecification = [
+  'match',
+  ['get', 'mode'],
+  'metro',
+  palette.metro.DEFAULT,
+  'tram',
+  palette.tram.DEFAULT,
+  palette.emt.DEFAULT,
+];
+
+const isStation: ExpressionSpecification = ['!=', ['get', 'mode'], 'emt'];
+const visible = (modes: Mode[]): ExpressionSpecification => ['in', ['get', 'mode'], ['literal', modes]];
+
+/** Filtros de cada capa según los modos activos en los chips. */
+export const filters = {
+  stops: (modes: Mode[]): FilterSpecification => ['all', ['==', ['get', 'mode'], 'emt'], visible(modes)],
+  stations: (modes: Mode[]): FilterSpecification => ['all', isStation, visible(modes)],
+  selected: (key: string | null): FilterSpecification => ['==', ['get', 'key'], key ?? '__none__'],
+};
 
 /** Paradas "hub" (6+ líneas) se dibujan algo mayores para dar jerarquía al mapa. */
 const isHub: ExpressionSpecification = ['>=', ['get', 'nLines'], 6];
 
-export const stopsLayer: Circle = {
+export const stopsLayer = (modes: Mode[]): Circle => ({
   id: 'stops',
   type: 'circle',
+  filter: filters.stops(modes),
   paint: {
     'circle-color': palette.emt.DEFAULT,
     'circle-radius': [
@@ -38,12 +58,29 @@ export const stopsLayer: Circle = {
     'circle-opacity': ['interpolate', ['linear'], ['zoom'], 10, 0.5, 13, 1],
     'circle-pitch-alignment': 'map',
   },
-};
+});
 
-export const stopsLabelLayer: Symbol = {
+/** Estaciones de metro/tranvía: más grandes y con anillo blanco, visibles desde lejos. */
+export const stationsLayer = (modes: Mode[]): Circle => ({
+  id: 'stations',
+  type: 'circle',
+  filter: filters.stations(modes),
+  paint: {
+    'circle-color': modeColor,
+    'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 2.5, 13, 5, 16, 9],
+    'circle-stroke-color': '#FFFFFF',
+    'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 14, 2.5],
+    'circle-pitch-alignment': 'map',
+  },
+});
+
+const labelPaint = { 'text-color': '#C9CDD4', 'text-halo-color': palette.ink.DEFAULT, 'text-halo-width': 1.4 } as const;
+
+export const stopsLabelLayer = (modes: Mode[]): Symbol => ({
   id: 'stops-label',
   type: 'symbol',
   minzoom: 16,
+  filter: filters.stops(modes),
   layout: {
     'text-field': ['get', 'name'],
     'text-font': ['Noto Sans Regular'],
@@ -53,33 +90,46 @@ export const stopsLabelLayer: Symbol = {
     'text-max-width': 9,
     'text-optional': true,
   },
-  paint: {
-    'text-color': '#C9CDD4',
-    'text-halo-color': palette.ink.DEFAULT,
-    'text-halo-width': 1.4,
-  },
-};
+  paint: labelPaint,
+});
 
-export const selectedHaloLayer = (id: string | null): Circle => ({
-  id: 'stops-selected-halo',
+export const stationsLabelLayer = (modes: Mode[]): Symbol => ({
+  id: 'stations-label',
+  type: 'symbol',
+  minzoom: 13,
+  filter: filters.stations(modes),
+  layout: {
+    'text-field': ['get', 'name'],
+    'text-font': ['Noto Sans Bold'],
+    'text-size': ['interpolate', ['linear'], ['zoom'], 13, 10, 16, 12],
+    'text-offset': [0, 1.1],
+    'text-anchor': 'top',
+    'text-max-width': 9,
+    'text-optional': true,
+  },
+  paint: { ...labelPaint, 'text-color': '#E4E7EC' },
+});
+
+export const selectedHaloLayer = (key: string | null): Circle => ({
+  id: 'selected-halo',
   type: 'circle',
-  filter: selectedFilter(id),
+  filter: filters.selected(key),
   paint: {
-    'circle-color': palette.emt.DEFAULT,
+    'circle-color': modeColor,
     'circle-opacity': 0.22,
     'circle-radius': 26,
     'circle-blur': 0.35,
   },
 });
 
-export const selectedLayer = (id: string | null): Circle => ({
-  id: 'stops-selected',
+export const selectedLayer = (key: string | null): Circle => ({
+  id: 'selected',
   type: 'circle',
-  filter: selectedFilter(id),
+  filter: filters.selected(key),
   paint: {
     'circle-color': '#FFFFFF',
     'circle-radius': 7,
-    'circle-stroke-color': palette.emt.DEFAULT,
+    'circle-stroke-color': modeColor,
     'circle-stroke-width': 4,
   },
 });

@@ -14,8 +14,17 @@ npx expo run:ios       # requiere macOS; alternativa: eas build --profile develo
 
 Comprobaciones: `npm run typecheck`, `npx expo lint`, `npx expo-doctor`.
 
+## Backend (Supabase)
+
+- Las Edge Functions están en `supabase/functions/` y los parsers que comparten con la app, en `_shared/`.
+  - `arrivals?stop=2277`: llegadas de EMT. **La EMT bloquea a Supabase (AWS)**, así que la app nativa consulta la EMT directamente desde el móvil.
+  - `fgv-departures?station=24`: salidas de metro y tranvía. Funciona en todas las plataformas.
+- Desplegar: `npx supabase functions deploy <nombre> --use-api` (no necesita Docker).
+- Configuración pública en `.env.local` (copia `.env.example`).
+
 ## Datos
 
+- `npm run data:fgv` regenera `src/data/fgv-stations.json` (estaciones de metro y tranvía y colores oficiales de las líneas).
 - `npm run data:emt` regenera `src/data/emt-stops.json` y `emt-routes.json` desde el GTFS de EMT publicado en el CKAN del Ajuntament. Es temporal: más adelante los datos vendrán de Supabase/PostGIS.
 - Qué devuelve hoy cada API de tiempo real: [docs/apis-tiempo-real.md](docs/apis-tiempo-real.md).
 

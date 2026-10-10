@@ -27,7 +27,13 @@ export async function getEmtArrivals(stopId: string, signal?: AbortSignal): Prom
   return { ...result, fetchedAt: new Date().toISOString() };
 }
 
-export type ArrivalGroup = { line: string; destination: string; minutes: (number | null)[] };
+export type ArrivalGroup = {
+  line: string;
+  destination: string;
+  minutes: (number | null)[];
+  /** Hora del primer vehículo ("19:42"), cuando la fuente la da. */
+  firstTime?: string;
+};
 
 /** Agrupa por línea + destino ("70 → La Fontsanta: 0, 9 min"), ordenado por la primera llegada. */
 export function groupArrivals(arrivals: Arrival[]): ArrivalGroup[] {

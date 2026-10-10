@@ -12,20 +12,22 @@ import {
 } from 'maplibre-gl';
 import { useEffect, useEffectEvent, useImperativeHandle, useRef, type Ref } from 'react';
 
-import { stopsGeoJSON } from '@/data/emt';
+import { placesGeoJSON } from '@/data/places';
 import { VALENCIA_CENTER } from '@/lib/geo';
 import { darkMapStyle } from '@/theme/map-style';
 
 import {
+  filters,
   meDotLayer,
   meHaloLayer,
   ME_SOURCE,
-  selectedFilter,
+  PLACES_SOURCE,
   selectedHaloLayer,
   selectedLayer,
+  stationsLabelLayer,
+  stationsLayer,
   stopsLabelLayer,
   stopsLayer,
-  STOPS_SOURCE,
 } from './layers';
 import type { TransitMapHandle, TransitMapProps } from './types';
 
@@ -44,10 +46,11 @@ const gl = {
 
 export function TransitMap({
   ref,
-  selectedStopId,
+  selectedKey,
+  modes,
   topInset,
   userLocation,
-  onStopPress,
+  onPlacePress,
   onMapPress,
   onCenterChange,
 }: TransitMapProps & { ref?: Ref<TransitMapHandle> }) {
@@ -58,7 +61,7 @@ export function TransitMap({
   const pendingSync = useRef<(() => void) | null>(null);
 
   // Los handlers cambian en cada render; con useEffectEvent no hace falta re-registrar los eventos del mapa.
-  const emitStopPress = useEffectEvent((id: string) => onStopPress(id));
+  const emitPlacePress = useEffectEvent((key: string) => onPlacePress(key));
   const emitMapPress = useEffectEvent(() => onMapPress?.());
   const emitCenterChange = useEffectEvent((c: [number, number]) => onCenterChange?.(c));
 
@@ -86,11 +89,14 @@ export function TransitMap({
     m.once('load', () => m.getContainer().querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show'));
 
     m.on('load', () => {
-      m.addSource(STOPS_SOURCE, { type: 'geojson', data: stopsGeoJSON });
-      m.addLayer(gl.layer(selectedHaloLayer(null), STOPS_SOURCE));
-      m.addLayer(gl.layer(stopsLayer, STOPS_SOURCE));
-      m.addLayer(gl.layer(stopsLabelLayer, STOPS_SOURCE));
-      m.addLayer(gl.layer(selectedLayer(null), STOPS_SOURCE));
+      // Los filtros reales (modos y selección) los aplica el efecto de sincronización.
+      m.addSource(PLACES_SOURCE, { type: 'geojson', data: placesGeoJSON });
+      m.addLayer(gl.layer(selectedHaloLayer(null), PLACES_SOURCE));
+      m.addLayer(gl.layer(stopsLayer([]), PLACES_SOURCE));
+      m.addLayer(gl.layer(stopsLabelLayer([]), PLACES_SOURCE));
+      m.addLayer(gl.layer(stationsLayer([]), PLACES_SOURCE));
+      m.addLayer(gl.layer(stationsLabelLayer([]), PLACES_SOURCE));
+      m.addLayer(gl.layer(selectedLayer(null), PLACES_SOURCE));
 
       m.addSource(ME_SOURCE, { type: 'geojson', data: EMPTY });
       m.addLayer(gl.layer(meHaloLayer, ME_SOURCE));
@@ -100,20 +106,18 @@ export function TransitMap({
       pendingSync.current = null;
     });
 
-    let stopClicked = false;
-    m.on('click', 'stops', (e) => {
-      const id = e.features?.[0]?.properties?.id;
-      if (id) {
-        stopClicked = true;
-        emitStopPress(String(id));
-      }
+    // Un único click: si hay estación y parada bajo el puntero, gana la estación (está encima).
+    const PRESSABLE = ['stations', 'stops'];
+    m.on('click', (e) => {
+      const [hit] = m.queryRenderedFeatures(e.point, { layers: PRESSABLE });
+      const key = hit?.properties?.key;
+      if (key) emitPlacePress(String(key));
+      else emitMapPress();
     });
-    m.on('click', () => {
-      if (!stopClicked) emitMapPress();
-      stopClicked = false;
-    });
-    m.on('mouseenter', 'stops', () => (m.getCanvas().style.cursor = 'pointer'));
-    m.on('mouseleave', 'stops', () => (m.getCanvas().style.cursor = ''));
+    for (const layer of PRESSABLE) {
+      m.on('mouseenter', layer, () => (m.getCanvas().style.cursor = 'pointer'));
+      m.on('mouseleave', layer, () => (m.getCanvas().style.cursor = ''));
+    }
     m.on('moveend', () => {
       const c = m.getCenter();
       emitCenterChange([c.lng, c.lat]);
@@ -126,20 +130,26 @@ export function TransitMap({
     };
   }, []);
 
-  // Sincroniza la selección y la ubicación una vez que el estilo está cargado.
+  // Sincroniza modos, selección y ubicación una vez que el estilo está cargado.
+  const modesKey = modes.join(',');
   useEffect(() => {
     const m = map.current;
     if (!m) return;
+    const visibleModes = modesKey ? (modesKey.split(',') as typeof modes) : [];
     const apply = () => {
-      m.setFilter('stops-selected', gl.filter(selectedFilter(selectedStopId)));
-      m.setFilter('stops-selected-halo', gl.filter(selectedFilter(selectedStopId)));
+      m.setFilter('stops', gl.filter(filters.stops(visibleModes)));
+      m.setFilter('stops-label', gl.filter(filters.stops(visibleModes)));
+      m.setFilter('stations', gl.filter(filters.stations(visibleModes)));
+      m.setFilter('stations-label', gl.filter(filters.stations(visibleModes)));
+      m.setFilter('selected', gl.filter(filters.selected(selectedKey)));
+      m.setFilter('selected-halo', gl.filter(filters.selected(selectedKey)));
       (m.getSource(ME_SOURCE) as GeoJSONSource | undefined)?.setData(
         userLocation ? { type: 'Point', coordinates: userLocation } : EMPTY,
       );
     };
     if (ready.current) apply();
     else pendingSync.current = apply;
-  }, [selectedStopId, userLocation]);
+  }, [selectedKey, userLocation, modesKey]);
 
   // La atribución va arriba a la derecha, por debajo de la barra de búsqueda y los chips.
   useEffect(() => {

@@ -1,3 +1,4 @@
+import type { Mode } from '@/data/places';
 import type { LngLat } from '@/lib/geo';
 
 export type TransitMapHandle = {
@@ -6,11 +7,14 @@ export type TransitMapHandle = {
 };
 
 export type TransitMapProps = {
-  selectedStopId: string | null;
+  /** Clave del lugar seleccionado ("emt:2277", "fgv:24"). */
+  selectedKey: string | null;
+  /** Modos visibles (chips de la barra superior). */
+  modes: Mode[];
   /** Alto ocupado por la UI flotante superior: la atribución del mapa se coloca justo debajo. */
   topInset: number;
   userLocation: LngLat | null;
-  onStopPress(id: string): void;
+  onPlacePress(key: string): void;
   onMapPress?(): void;
   /** Se llama al terminar de mover el mapa, con el nuevo centro. */
   onCenterChange?(center: LngLat): void;
