@@ -10,7 +10,7 @@ import { routeByLine, type Stop } from '@/data/emt';
 import { formatDistance, walkingMinutes } from '@/lib/geo';
 import { palette } from '@/theme/palette';
 
-import { Skeleton } from './skeleton';
+import { ArrivalsCard } from './arrivals-card';
 
 type Props = { stop: Stop; meters: number | null; onClose(): void };
 
@@ -47,30 +47,9 @@ export function StopDetail({ stop, meters, onClose }: Props) {
           </Pressable>
         </View>
 
-        {/* Llegadas: hueco reservado para el tiempo real (Edge Function poll-emt). */}
+        {/* Llegadas en tiempo real */}
         <Animated.View entering={FadeInDown.delay(60).duration(350)} style={{ marginTop: 24 }}>
-          <View className="overflow-hidden rounded-3xl border border-line bg-surface-raised">
-            <View className="flex-row items-center justify-between px-4 pb-2 pt-4">
-              <Text className="font-jk-bold text-[15px]">Próximas llegadas</Text>
-              <View className="flex-row items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1">
-                <View className="h-1.5 w-1.5 rounded-full bg-accent" />
-                <Text className="font-jk-semibold text-[11px] text-accent">EN DIRECTO · PRONTO</Text>
-              </View>
-            </View>
-            {stop.lines.slice(0, 3).map((l, i) => (
-              <View key={l} className={`flex-row items-center gap-3 px-4 py-3 ${i > 0 ? 'border-t border-line' : ''}`}>
-                <LineBadge line={l} />
-                <View className="flex-1 gap-1.5">
-                  <Skeleton className="h-3" style={{ width: '70%', height: 12 }} />
-                  <Skeleton style={{ width: '40%', height: 10 }} />
-                </View>
-                <Skeleton style={{ width: 44, height: 22 }} />
-              </View>
-            ))}
-            <Text className="px-4 pb-4 pt-1 text-[12px] leading-[17px] text-fg-subtle">
-              Los tiempos de llegada se conectarán con la EMT desde el backend en el siguiente paso.
-            </Text>
-          </View>
+          <ArrivalsCard stopId={stop.id} lines={stop.lines} />
         </Animated.View>
 
         {/* Líneas */}
