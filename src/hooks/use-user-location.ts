@@ -3,7 +3,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { LngLat } from '@/lib/geo';
 
-type Status = 'idle' | 'locating' | 'granted' | 'denied';
+type Status = 'locating' | 'granted' | 'denied';
+
+const toLngLat = (p: Location.LocationObject): LngLat => [p.coords.longitude, p.coords.latitude];
 
 /**
  * Ubicación del usuario con seguimiento continuo (balanced, ~10 m).
@@ -11,25 +13,21 @@ type Status = 'idle' | 'locating' | 'granted' | 'denied';
  */
 export function useUserLocation() {
   const [location, setLocation] = useState<LngLat | null>(null);
-  const [status, setStatus] = useState<Status>('idle');
+  const [status, setStatus] = useState<Status>('locating');
   const sub = useRef<Location.LocationSubscription | null>(null);
 
-  const start = useCallback(async (): Promise<LngLat | null> => {
-    setStatus('locating');
+  /** Pide permiso (si hace falta), devuelve la posición actual y arranca el seguimiento. */
+  const locate = useCallback(async (): Promise<LngLat | null> => {
     try {
       const { granted } = await Location.requestForegroundPermissionsAsync();
-      if (!granted) {
-        setStatus('denied');
-        return null;
-      }
-      setStatus('granted');
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const here: LngLat = [pos.coords.longitude, pos.coords.latitude];
-      setLocation(here);
+      setStatus(granted ? 'granted' : 'denied');
+      if (!granted) return null;
 
+      const here = toLngLat(await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
+      setLocation(here);
       sub.current ??= await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, distanceInterval: 10 },
-        (p) => setLocation([p.coords.longitude, p.coords.latitude]),
+        (p) => setLocation(toLngLat(p)),
       );
       return here;
     } catch {
@@ -39,12 +37,15 @@ export function useUserLocation() {
   }, []);
 
   useEffect(() => {
-    start();
+    // Intento inicial; los setState ocurren en la resolución de la promesa, no durante el efecto.
+    const initial = Promise.resolve().then(locate);
     return () => {
-      sub.current?.remove();
-      sub.current = null;
+      initial.then(() => {
+        sub.current?.remove();
+        sub.current = null;
+      });
     };
-  }, [start]);
+  }, [locate]);
 
-  return { location, status, locate: start };
+  return { location, status, locate };
 }

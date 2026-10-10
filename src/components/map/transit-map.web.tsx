@@ -10,7 +10,7 @@ import {
   setWorkerUrl,
   type StyleSpecification as GLStyle,
 } from 'maplibre-gl';
-import { useEffect, useImperativeHandle, useRef, type Ref } from 'react';
+import { useEffect, useEffectEvent, useImperativeHandle, useRef, type Ref } from 'react';
 
 import { stopsGeoJSON } from '@/data/emt';
 import { VALENCIA_CENTER } from '@/lib/geo';
@@ -57,9 +57,10 @@ export function TransitMap({
   // Última sincronización pendiente si llega antes de que el estilo termine de cargar.
   const pendingSync = useRef<(() => void) | null>(null);
 
-  // Los handlers cambian en cada render; los leemos desde una ref para no re-registrar eventos.
-  const handlers = useRef({ onStopPress, onMapPress, onCenterChange });
-  handlers.current = { onStopPress, onMapPress, onCenterChange };
+  // Los handlers cambian en cada render; con useEffectEvent no hace falta re-registrar los eventos del mapa.
+  const emitStopPress = useEffectEvent((id: string) => onStopPress(id));
+  const emitMapPress = useEffectEvent(() => onMapPress?.());
+  const emitCenterChange = useEffectEvent((c: [number, number]) => onCenterChange?.(c));
 
   useImperativeHandle(ref, () => ({
     flyTo(center, { zoom = 16, bottomInset = 0 } = {}) {
@@ -104,18 +105,18 @@ export function TransitMap({
       const id = e.features?.[0]?.properties?.id;
       if (id) {
         stopClicked = true;
-        handlers.current.onStopPress(String(id));
+        emitStopPress(String(id));
       }
     });
     m.on('click', () => {
-      if (!stopClicked) handlers.current.onMapPress?.();
+      if (!stopClicked) emitMapPress();
       stopClicked = false;
     });
     m.on('mouseenter', 'stops', () => (m.getCanvas().style.cursor = 'pointer'));
     m.on('mouseleave', 'stops', () => (m.getCanvas().style.cursor = ''));
     m.on('moveend', () => {
       const c = m.getCenter();
-      handlers.current.onCenterChange?.([c.lng, c.lat]);
+      emitCenterChange([c.lng, c.lat]);
     });
 
     return () => {
