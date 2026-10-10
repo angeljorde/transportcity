@@ -73,6 +73,8 @@ export function TransitMap({
       map.current?.flyTo({ center, zoom, padding: { top: 0, left: 0, right: 0, bottom: bottomInset }, duration: 900, essential: true });
     },
     fitBounds(bounds, padding) {
+      // El padding de flyTo() anteriores persiste y se sumaría al de fitBounds: lo reiniciamos.
+      map.current?.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
       map.current?.fitBounds(bounds, { padding, duration: 900, essential: true, maxZoom: 17 });
     },
   }));
@@ -167,5 +169,6 @@ export function TransitMap({
     if (corner) corner.style.top = `${topInset}px`;
   }, [topInset]);
 
-  return <div ref={container} style={{ position: 'absolute', inset: 0, background: '#0D0F12' }} />;
+  // zIndex 0 crea un contexto de apilado: los controles de maplibre (z-index 2) no asoman por encima de la UI.
+  return <div ref={container} style={{ position: 'absolute', inset: 0, zIndex: 0, background: '#0D0F12' }} />;
 }

@@ -87,6 +87,7 @@ export function buildHtml(topInset: number): string {
       map.getSource(I.routeSource).setData(s.route || EMPTY);
     },
     fitBounds: function(b, padding){
+      map.setPadding({ top:0, bottom:0, left:0, right:0 });
       map.fitBounds(b, { padding:padding, duration:900, essential:true, maxZoom:17 });
     },
     flyTo: function(center, zoom, bottom){

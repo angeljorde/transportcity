@@ -48,26 +48,29 @@ export function RoutesPanel({ origin, destination, itineraries, live, selectedId
   return (
     <BottomSheetScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
       {/* Resumen origen → destino */}
-      <Animated.View entering={FadeIn.duration(250)} className="flex-row items-center gap-2 px-4 pb-3 pt-1">
-        <Pressable onPress={onEdit} className="flex-1 flex-row items-center gap-3 rounded-2xl bg-white/5 px-3.5 py-2.5 active:bg-white/10">
-          <View className="items-center">
-            <View className="h-2 w-2 rounded-full bg-accent" />
-            <View className="my-0.5 h-2.5 w-px bg-fg-subtle" />
-            <View className="h-2 w-2 rounded-sm bg-fg" />
-          </View>
-          <View className="flex-1">
-            <Text className="text-[12px] text-fg-muted" numberOfLines={1}>
-              {origin.name}
-            </Text>
-            <Text className="font-jk-bold text-[15px]" numberOfLines={1}>
-              {destination.name}
-            </Text>
-          </View>
-          <Ionicons name="pencil" size={15} color={palette.fg.muted} />
-        </Pressable>
-        <Pressable onPress={onClose} accessibilityLabel="Cerrar rutas" className="h-11 w-11 items-center justify-center rounded-full bg-white/10 active:bg-white/20">
-          <Ionicons name="close" size={20} color={palette.fg.DEFAULT} />
-        </Pressable>
+      {/* className no se aplica a Animated.View (Reanimated): el layout va en un View interior. */}
+      <Animated.View entering={FadeIn.duration(250)}>
+        <View className="flex-row items-center gap-2 px-4 pb-3 pt-1">
+          <Pressable onPress={onEdit} className="flex-1 flex-row items-center gap-3 rounded-2xl bg-white/5 px-3.5 py-2.5 active:bg-white/10">
+            <View className="items-center">
+              <View className="h-2 w-2 rounded-full bg-accent" />
+              <View className="my-0.5 h-2.5 w-px bg-fg-subtle" />
+              <View className="h-2 w-2 rounded-sm bg-fg" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-[12px] text-fg-muted" numberOfLines={1}>
+                {origin.name}
+              </Text>
+              <Text className="font-jk-bold text-[15px]" numberOfLines={1}>
+                {destination.name}
+              </Text>
+            </View>
+            <Ionicons name="pencil" size={15} color={palette.fg.muted} />
+          </Pressable>
+          <Pressable onPress={onClose} accessibilityLabel="Cerrar rutas" className="h-11 w-11 items-center justify-center rounded-full bg-white/10 active:bg-white/20">
+            <Ionicons name="close" size={20} color={palette.fg.DEFAULT} />
+          </Pressable>
+        </View>
       </Animated.View>
 
       {sorted.length === 0 ? (
@@ -98,8 +101,10 @@ export function RoutesPanel({ origin, destination, itineraries, live, selectedId
               }}
             />
             {expanded === it.id && (
-              <Animated.View entering={FadeIn.duration(200)} className="mx-3 mb-3 rounded-3xl border border-line bg-surface-raised py-3">
-                <ItinerarySteps it={it} live={live.get(it.id)} originName={origin.name} destinationName={destination.name} now={now} />
+              <Animated.View entering={FadeIn.duration(200)}>
+                <View className="mx-3 mb-3 rounded-3xl border border-line bg-surface-raised py-3">
+                  <ItinerarySteps it={it} live={live.get(it.id)} originName={origin.name} destinationName={destination.name} now={now} />
+                </View>
               </Animated.View>
             )}
             {it.id === selectedId && expanded !== it.id && (

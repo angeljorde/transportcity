@@ -68,7 +68,9 @@ export async function liveBoarding(it: Itinerary, signal?: AbortSignal): Promise
     .map((v) => v.minutes as number)
     .filter((m) => m >= walkBefore - 0.5)
     .sort((a, b) => a - b);
-  if (!catchable.length) return { status: 'none' };
+  // FGV solo publica las próximas ~10 salidas de todas las líneas: que no salga la nuestra
+  // no significa que no circule. Ahí caemos a la frecuencia; en EMT sí es "no viene ninguno".
+  if (!catchable.length) return { status: leg.op === 'emt' ? 'none' : 'unavailable' };
 
   const [arrivesIn, ...later] = catchable;
   const estimatedBoarding = walkBefore + leg.waitMin;
