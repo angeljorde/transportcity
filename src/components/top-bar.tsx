@@ -12,9 +12,9 @@ import { palette } from '@/theme/palette';
 
 const tap = () => Platform.OS !== 'web' && Haptics.selectionAsync();
 
-type Props = { modes: Mode[]; onToggleMode(mode: Mode): void; onSearch(): void };
+type Props = { modes: Mode[]; onToggleMode(mode: Mode): void; onSearch(): void; onSaved(): void };
 
-export function TopBar({ modes, onToggleMode, onSearch }: Props) {
+export function TopBar({ modes, onToggleMode, onSearch, onSaved }: Props) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -38,13 +38,12 @@ export function TopBar({ modes, onToggleMode, onSearch }: Props) {
           <Pressable
             onPress={() => {
               tap();
-              onSearch();
+              onSaved();
             }}
             className="h-10 flex-row items-center gap-1.5 rounded-full bg-white/5 px-3 active:bg-white/10"
-            accessibilityLabel="Salir ahora">
-            <Ionicons name="time-outline" size={16} color={palette.fg.DEFAULT} />
-            <Text className="font-jk-semibold text-[13px]">Ahora</Text>
-            <Ionicons name="chevron-down" size={14} color={palette.fg.muted} />
+            accessibilityLabel="Mis rutas">
+            <Ionicons name="bookmark" size={15} color={palette.accent.DEFAULT} />
+            <Text className="font-jk-semibold text-[13px]">Mis rutas</Text>
           </Pressable>
         </Glass>
       </View>

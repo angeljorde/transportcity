@@ -1,4 +1,5 @@
 import BottomSheet from '@gorhom/bottom-sheet';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Platform, useWindowDimensions, View } from 'react-native';
@@ -19,8 +20,9 @@ import { TopBar } from '@/components/top-bar';
 import { ALL_MODES, placeByKey, places, type Mode, type Place } from '@/data/places';
 import { useLiveBoardings } from '@/hooks/use-live-boardings';
 import { useUserLocation } from '@/hooks/use-user-location';
-import { alertsSupported, cancelFavorite, scheduleFavorite } from '@/lib/alerts';
-import { favoritesStore, newFavoriteId, sameTrip, useFavorites, type Favorite } from '@/lib/favorites';
+import { alertsSupported } from '@/lib/alerts';
+import { deleteFavorite, draftFavorite, saveFavorite } from '@/lib/favorite-actions';
+import { favoritesStore, sameTrip, useFavorites, type Favorite } from '@/lib/favorites';
 import { distance, nearest, VALENCIA_CENTER, type LngLat } from '@/lib/geo';
 import { drawItinerary } from '@/lib/route-geo';
 import { planRoutes, type Itinerary } from '@/lib/router';
@@ -148,38 +150,34 @@ export default function MapScreen() {
     [location, plan],
   );
 
-  const saveFavorite = useCallback(async (f: Favorite) => {
-    if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  const onSaveFavorite = useCallback((f: Favorite) => {
     setEditing(null);
-    favoritesStore.upsert(f);
-    const notificationIds = await scheduleFavorite(f).catch(() => []);
-    favoritesStore.upsert({ ...f, notificationIds });
+    saveFavorite(f);
   }, []);
 
-  const deleteFavorite = useCallback(async (f: Favorite) => {
+  const onDeleteFavorite = useCallback((f: Favorite) => {
     setEditing(null);
-    favoritesStore.remove(f.id);
-    await cancelFavorite(f).catch(() => {});
+    deleteFavorite(f);
   }, []);
 
   /** Estrella del panel de rutas: guardar (borrador con valores por defecto) o editar. */
   const startSave = useCallback(() => {
     if (!origin || !destination) return;
-    if (savedFav) return setEditing({ fav: savedFav, isNew: false });
-    setEditing({
-      isNew: true,
-      fav: {
-        id: newFavoriteId(),
-        name: destination.name,
-        icon: 'star',
-        origin: origin.isMe ? { name: 'Tu ubicación', coord: origin.coord, isMe: true } : origin,
-        destination,
-        schedule: { enabled: alertsSupported, days: [1, 2, 3, 4, 5], time: '08:00', advanceMin: 10 },
-        notificationIds: [],
-        createdAt: Date.now(),
-      },
-    });
+    setEditing(savedFav ? { fav: savedFav, isNew: false } : { fav: draftFavorite(origin, destination), isNew: true });
   }, [origin, destination, savedFav]);
+
+  // Llegadas desde otra pantalla ("Mis rutas"): ?fav=<id> abre ese favorito; ?search=1 abre el buscador.
+  const params = useLocalSearchParams<{ fav?: string; search?: string }>();
+  useEffect(() => {
+    if (params.fav) {
+      const f = favoritesStore.get().find((x) => x.id === params.fav);
+      if (f) openFavorite(f);
+      router.setParams({ fav: undefined });
+    } else if (params.search) {
+      setScreen('search');
+      router.setParams({ search: undefined });
+    }
+  }, [params.fav, params.search, openFavorite]);
 
   /** "Cómo llegar" desde la ficha de una parada. */
   const directionsTo = useCallback(
@@ -222,7 +220,7 @@ export default function MapScreen() {
         onCenterChange={setCenter}
       />
 
-      {screen === 'map' && <TopBar modes={modes} onToggleMode={toggleMode} onSearch={() => setScreen('search')} />}
+      {screen === 'map' && <TopBar modes={modes} onToggleMode={toggleMode} onSearch={() => setScreen('search')} onSaved={() => router.push('/saved')} />}
       {screen === 'map' && <MapFab sheetPosition={sheetPosition} onLocate={goToMe} active={status === 'granted'} />}
 
       <BottomSheet
@@ -262,7 +260,9 @@ export default function MapScreen() {
             fromUser={!!location}
             onSelect={selectPlace}
             header={
-              <FavoritesStrip favorites={favorites} location={location} onOpen={openFavorite} onEdit={(f) => setEditing({ fav: f, isNew: false })} />
+              <FavoritesStrip favorites={favorites} location={location} onOpen={openFavorite} onEdit={(f) => setEditing({ fav: f, isNew: false })}
+                onSeeAll={() => router.push('/saved')}
+              />
             }
           />
         )}
@@ -291,8 +291,8 @@ export default function MapScreen() {
         <SaveRouteSheet
           favorite={editing.fav}
           isNew={editing.isNew}
-          onSave={saveFavorite}
-          onDelete={deleteFavorite}
+          onSave={onSaveFavorite}
+          onDelete={onDeleteFavorite}
           onClose={() => setEditing(null)}
         />
       )}

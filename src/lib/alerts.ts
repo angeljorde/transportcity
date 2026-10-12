@@ -17,7 +17,7 @@ import { isRunningInExpoGo } from 'expo';
 import type * as NotificationsModule from 'expo-notifications';
 import { Platform } from 'react-native';
 
-import type { Favorite } from './favorites';
+import { timeToMinutes, type Favorite } from './favorites';
 
 type Notif = typeof NotificationsModule;
 
@@ -70,10 +70,6 @@ export async function ensureAlertPermission(): Promise<boolean> {
   return asked.granted;
 }
 
-const parseTime = (t: string) => {
-  const [h, m] = t.split(':').map(Number);
-  return h * 60 + m;
-};
 
 /** Cancela los recordatorios anteriores del favorito y programa los nuevos. Devuelve sus ids. */
 export async function scheduleFavorite(fav: Favorite): Promise<string[]> {
@@ -83,27 +79,21 @@ export async function scheduleFavorite(fav: Favorite): Promise<string[]> {
   if (!fav.schedule.enabled || !fav.schedule.days.length) return [];
   if (!(await ensureAlertPermission())) return [];
 
+  const start = timeToMinutes(fav.schedule.from);
   const ids: string[] = [];
   for (const day of fav.schedule.days) {
-    // Hora del aviso = salida − antelación (puede caer el día anterior si cruza medianoche).
-    let minutes = parseTime(fav.schedule.time) - fav.schedule.advanceMin;
-    let weekday = day;
-    if (minutes < 0) {
-      minutes += 24 * 60;
-      weekday = (day + 6) % 7;
-    }
     ids.push(
       await Notifications.scheduleNotificationAsync({
         content: {
           title: `${fav.name}`,
-          body: `Sales sobre las ${fav.schedule.time}. Toca para ver cuándo pasa tu transporte en directo.`,
+          body: `Empieza tu franja de salida (${fav.schedule.from}–${fav.schedule.to}). Toca y te avisamos de cada bus o metro que puedas coger.`,
           data: { favoriteId: fav.id, kind: 'reminder' },
         },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-          weekday: weekday + 1, // expo-notifications: 1 = domingo
-          hour: Math.floor(minutes / 60),
-          minute: minutes % 60,
+          weekday: day + 1, // expo-notifications: 1 = domingo
+          hour: Math.floor(start / 60),
+          minute: start % 60,
           channelId: CHANNEL,
         },
       }),
@@ -116,40 +106,58 @@ export async function cancelFavorite(fav: Favorite) {
   const Notifications = mod;
   if (!Notifications) return;
   await Promise.all(fav.notificationIds.map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => {})));
-  await cancelLeaveNow(fav.id);
+  await cancelLeaveAlerts(fav.id);
 }
 
-// Un único "¡Sal ya!" pendiente por favorito: se reprograma si los datos en directo cambian.
-const leaveNowIds = new Map<string, { id: string; at: number }>();
+export type LeaveAlert = { leaveAt: Date; detail: string };
 
-export async function scheduleLeaveNow(fav: Favorite, leaveAt: Date, detail: string) {
+// "¡Sal ya!" pendientes por favorito (uno por vehículo de la franja). Se reprograman
+// cuando cambian los datos en directo.
+const leaveAlerts = new Map<string, { ids: string[]; signature: string }>();
+
+/**
+ * Programa un "¡Sal ya!" por cada vehículo que se puede coger dentro de la franja.
+ * Solo reprograma si cambia algún minuto de salida (evita parpadeos por segundos).
+ */
+export async function scheduleLeaveAlerts(fav: Favorite, alerts: LeaveAlert[]) {
   const Notifications = mod;
   if (!Notifications) return;
-  const prev = leaveNowIds.get(fav.id);
-  // Evita reprogramar por cambios de segundos: solo si se mueve 1 min o más.
-  if (prev && Math.abs(prev.at - leaveAt.getTime()) < 60_000) return;
-  await cancelLeaveNow(fav.id);
-  if (leaveAt.getTime() - Date.now() < 30_000) return; // ya es la hora: lo muestra la propia app
-  if (!(await Notifications.getPermissionsAsync()).granted) return;
-  const id = await Notifications.scheduleNotificationAsync({
-    content: { title: `¡Sal ya! · ${fav.name}`, body: detail, data: { favoriteId: fav.id, kind: 'leave-now' } },
-    trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: leaveAt, channelId: CHANNEL },
-  });
-  leaveNowIds.set(fav.id, { id, at: leaveAt.getTime() });
+  const future = alerts.filter((a) => a.leaveAt.getTime() - Date.now() >= 30_000);
+  const signature = future.map((a) => Math.round(a.leaveAt.getTime() / 60_000)).join(',');
+  if (leaveAlerts.get(fav.id)?.signature === signature) return;
+  await cancelLeaveAlerts(fav.id);
+  if (!future.length || !(await Notifications.getPermissionsAsync()).granted) return;
+  const ids: string[] = [];
+  for (const a of future) {
+    ids.push(
+      await Notifications.scheduleNotificationAsync({
+        content: { title: `¡Sal ya! · ${fav.name}`, body: a.detail, data: { favoriteId: fav.id, kind: 'leave-now' } },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: a.leaveAt, channelId: CHANNEL },
+      }),
+    );
+  }
+  leaveAlerts.set(fav.id, { ids, signature });
 }
 
-async function cancelLeaveNow(favId: string) {
-  const prev = leaveNowIds.get(favId);
+async function cancelLeaveAlerts(favId: string) {
+  const prev = leaveAlerts.get(favId);
   if (!prev || !mod) return;
-  leaveNowIds.delete(favId);
-  await mod.cancelScheduledNotificationAsync(prev.id).catch(() => {});
+  leaveAlerts.delete(favId);
+  await Promise.all(prev.ids.map((id) => mod!.cancelScheduledNotificationAsync(id).catch(() => {})));
 }
 
-/** ¿Estamos ahora en la ventana de salida del favorito? (desde el aviso hasta 30 min después de la hora) */
+/** ¿Estamos ahora en la franja de salida del favorito? (con 5 min de cortesía antes) */
 export function inDepartureWindow(fav: Favorite, now = new Date()): boolean {
   const s = fav.schedule;
   if (!s.enabled || !s.days.includes(now.getDay())) return false;
   const nowMin = now.getHours() * 60 + now.getMinutes();
-  const leave = parseTime(s.time);
-  return nowMin >= leave - s.advanceMin - 15 && nowMin <= leave + 30;
+  return nowMin >= timeToMinutes(s.from) - 5 && nowMin <= timeToMinutes(s.to);
+}
+
+/** Fecha de hoy a la hora "HH:MM". */
+export function todayAt(t: string, now = new Date()): Date {
+  const d = new Date(now);
+  const m = timeToMinutes(t);
+  d.setHours(Math.floor(m / 60), m % 60, 0, 0);
+  return d;
 }

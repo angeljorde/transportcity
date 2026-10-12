@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/ui/text';
 import { alertsSupported, alertsUnavailableReason } from '@/lib/alerts';
-import { FAVORITE_ICONS, type Favorite, type FavoriteIcon } from '@/lib/favorites';
+import { FAVORITE_ICONS, shiftTime, timeToMinutes, type Favorite, type FavoriteIcon, type Schedule } from '@/lib/favorites';
 import { palette } from '@/theme/palette';
 
 type Props = {
@@ -29,15 +29,10 @@ const WEEK = [
   { d: 6, l: 'S' },
   { d: 0, l: 'D' },
 ];
-const ADVANCE = [5, 10, 15, 20];
-
 const tap = () => Platform.OS !== 'web' && Haptics.selectionAsync();
 
-function shiftTime(t: string, deltaMin: number): string {
-  const [h, m] = t.split(':').map(Number);
-  const total = (((h * 60 + m + deltaMin) % 1440) + 1440) % 1440;
-  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
-}
+/** Duración mínima de la franja (min). */
+const MIN_RANGE = 10;
 
 export function SaveRouteSheet({ favorite, isNew, onSave, onDelete, onClose }: Props) {
   const insets = useSafeAreaInsets();
@@ -50,7 +45,20 @@ export function SaveRouteSheet({ favorite, isNew, onSave, onDelete, onClose }: P
     setSchedule((s) => ({ ...s, days: s.days.includes(d) ? s.days.filter((x) => x !== d) : [...s.days, d] }));
   };
 
-  const alertAt = shiftTime(schedule.time, -schedule.advanceMin);
+  // Mantiene "hasta" al menos MIN_RANGE min después de "desde" (y viceversa).
+  const setFrom = (delta: number) =>
+    setSchedule((s) => {
+      const from = shiftTime(s.from, delta);
+      const to = timeToMinutes(s.to) - timeToMinutes(from) < MIN_RANGE ? shiftTime(from, MIN_RANGE) : s.to;
+      return { ...s, from, to };
+    });
+  const setTo = (delta: number) =>
+    setSchedule((s): Schedule => {
+      const to = shiftTime(s.to, delta);
+      return timeToMinutes(to) - timeToMinutes(s.from) < MIN_RANGE ? s : { ...s, to };
+    });
+  const rangeMin = timeToMinutes(schedule.to) - timeToMinutes(schedule.from);
+
   const canSave = name.trim().length > 0 && (!schedule.enabled || schedule.days.length > 0);
 
   return (
@@ -143,49 +151,20 @@ export function SaveRouteSheet({ favorite, isNew, onSave, onDelete, onClose }: P
                     })}
                   </View>
 
-                  <Label>Salgo sobre las</Label>
-                  <View className="flex-row items-center justify-between rounded-2xl border border-line bg-surface-raised px-2 py-2">
-                    <Stepper icon="remove" onPress={() => setSchedule((s) => ({ ...s, time: shiftTime(s.time, -5) }))} />
-                    <View className="flex-row items-center gap-3">
-                      <Pressable onPress={() => setSchedule((s) => ({ ...s, time: shiftTime(s.time, -60) }))} hitSlop={8}>
-                        <Ionicons name="chevron-back" size={18} color={palette.fg.subtle} />
-                      </Pressable>
-                      <Text className="font-jk-xbold text-[34px]" style={{ fontVariant: ['tabular-nums'] }}>
-                        {schedule.time}
-                      </Text>
-                      <Pressable onPress={() => setSchedule((s) => ({ ...s, time: shiftTime(s.time, 60) }))} hitSlop={8}>
-                        <Ionicons name="chevron-forward" size={18} color={palette.fg.subtle} />
-                      </Pressable>
-                    </View>
-                    <Stepper icon="add" onPress={() => setSchedule((s) => ({ ...s, time: shiftTime(s.time, 5) }))} />
+                  <Label>Salgo entre</Label>
+                  <View className="flex-row items-center gap-2">
+                    <TimeStepper label="Desde" value={schedule.from} onChange={setFrom} />
+                    <Ionicons name="arrow-forward" size={16} color={palette.fg.subtle} />
+                    <TimeStepper label="Hasta" value={schedule.to} onChange={setTo} />
                   </View>
-
-                  <Label>Avísame antes</Label>
-                  <View className="flex-row gap-2">
-                    {ADVANCE.map((m) => {
-                      const on = schedule.advanceMin === m;
-                      return (
-                        <Pressable
-                          key={m}
-                          onPress={() => {
-                            tap();
-                            setSchedule((s) => ({ ...s, advanceMin: m }));
-                          }}
-                          className="h-11 flex-1 items-center justify-center rounded-2xl border"
-                          style={{ borderColor: on ? palette.accent.DEFAULT : palette.line.DEFAULT, backgroundColor: on ? palette.accent.soft : 'transparent' }}>
-                          <Text className="font-jk-semibold text-[14px]" style={{ color: on ? palette.accent.DEFAULT : palette.fg.muted }}>
-                            {m} min
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
+                  <Text className="mt-2 text-center text-[12px] text-fg-subtle">Franja de {rangeMin} min · cambia de 5 en 5 (mantén pulsado: de hora en hora)</Text>
 
                   <View className="mt-4 flex-row gap-3 rounded-2xl bg-accent-soft p-3.5">
                     <Ionicons name="notifications" size={18} color={palette.accent.DEFAULT} />
                     <Text className="flex-1 text-[13px] leading-[19px] text-fg">
-                      A las <Text className="font-jk-bold text-[13px]">{alertAt}</Text> te recordamos la ruta. Al abrirlo calculamos con datos en directo
-                      el minuto exacto para salir, con <Text className="font-jk-bold text-[13px]">3 min de margen</Text>, y te avisamos con un «¡Sal ya!».
+                      A las <Text className="font-jk-bold text-[13px]">{schedule.from}</Text> te recordamos la ruta. Desde ese momento y hasta las{' '}
+                      <Text className="font-jk-bold text-[13px]">{schedule.to}</Text> te avisamos con un «¡Sal ya!» de{' '}
+                      <Text className="font-jk-bold text-[13px]">cada bus o metro</Text> que puedas coger, con 3 min de margen en la parada.
                     </Text>
                   </View>
                 </Animated.View>
@@ -221,15 +200,37 @@ function Label({ children }: { children: string }) {
   return <Text className="mb-2 mt-5 font-jk-bold text-[12px] uppercase tracking-[1.2px] text-fg-muted">{children}</Text>;
 }
 
-function Stepper({ icon, onPress }: { icon: 'add' | 'remove'; onPress(): void }) {
+function TimeStepper({ label, value, onChange }: { label: string; value: string; onChange(delta: number): void }) {
+  return (
+    <View className="flex-1 items-center rounded-2xl border border-line bg-surface-raised py-2">
+      <Text className="font-jk-semibold text-[11px] uppercase tracking-wider text-fg-muted">{label}</Text>
+      <View className="mt-1 w-full flex-row items-center justify-between px-1.5">
+        <Stepper icon="remove" onPress={() => onChange(-5)} onLongPress={() => onChange(-60)} />
+        <Text className="font-jk-xbold text-[24px]" style={{ fontVariant: ['tabular-nums'] }}>
+          {value}
+        </Text>
+        <Stepper icon="add" onPress={() => onChange(5)} onLongPress={() => onChange(60)} />
+      </View>
+    </View>
+  );
+}
+
+function Stepper({ icon, onPress, onLongPress }: { icon: 'add' | 'remove'; onPress(): void; onLongPress?(): void }) {
   return (
     <Pressable
       onPress={() => {
         tap();
         onPress();
       }}
-      className="h-12 w-12 items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
-      <Ionicons name={icon} size={22} color={palette.fg.DEFAULT} />
+      onLongPress={
+        onLongPress &&
+        (() => {
+          tap();
+          onLongPress();
+        })
+      }
+      className="h-10 w-10 items-center justify-center rounded-xl bg-white/5 active:bg-white/10">
+      <Ionicons name={icon} size={20} color={palette.fg.DEFAULT} />
     </Pressable>
   );
 }

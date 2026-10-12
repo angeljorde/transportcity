@@ -7,7 +7,7 @@ import { placeByKey } from '@/data/places';
 import { getEmtArrivals } from './arrivals';
 import { getFgvDepartures } from './departures';
 import { normalize } from './geocode';
-import type { Itinerary, RideLeg } from './router';
+import type { Itinerary, Pattern, RideLeg } from './router';
 
 /** Margen de seguridad: llegar a la parada al menos 3 min antes de que pase el vehículo. */
 export const SAFETY_MARGIN_MIN = 3;
@@ -24,17 +24,24 @@ export type LiveBoarding =
       tight: boolean;
       /** Siguientes vehículos alcanzables (min). */
       later: number[];
+      /** Todos los vehículos que se cogen con margen (min hasta que llegan a la parada). */
+      upcoming: number[];
+      /** Minutos andando hasta la parada de subida. */
+      walkBefore: number;
       /** Total del itinerario con la espera real en lugar de la estimada. */
       totalMin: number;
     }
   | { status: 'none' } // no hay ningún vehículo de esas líneas en camino
   | { status: 'unavailable' }; // sin datos en tiempo real (p. ej. EMT en web)
 
-/** ¿El destino que anuncia el vehículo está más adelante en nuestro recorrido? (sentido correcto) */
-function goesOurWay(leg: RideLeg, destination: string): boolean {
+/**
+ * ¿El destino que anuncia el vehículo en la parada `fromIdx` está más adelante en el
+ * recorrido del patrón? (es decir, va en nuestro sentido)
+ */
+export function goesOurWay(pattern: Pattern, fromIdx: number, destination: string): boolean {
   const d = normalize(destination);
   if (!d) return false;
-  const ahead = [leg.pattern.headsign, ...leg.pattern.stops.slice(leg.fromIdx + 1).map((k) => placeByKey.get(k)?.name ?? '')];
+  const ahead = [pattern.headsign, ...pattern.stops.slice(fromIdx + 1).map((k) => placeByKey.get(k)?.name ?? '')];
   const dWords = d.split(' ').filter((w) => w.length >= 4);
   return ahead.some((name) => {
     const n = normalize(name);
@@ -64,7 +71,7 @@ export async function liveBoarding(it: Itinerary, signal?: AbortSignal): Promise
   }
 
   const ofOurLines = vehicles.filter((v) => leg.lines.includes(v.line) && v.minutes != null);
-  let candidates = ofOurLines.filter((v) => goesOurWay(leg, v.destination));
+  let candidates = ofOurLines.filter((v) => goesOurWay(leg.pattern, leg.fromIdx, v.destination));
   // En EMT cada parada suele estar en un solo sentido: si no casa el nombre, aceptamos la línea.
   // En metro/tranvía pasan ambos sentidos por el mismo andén: ahí exigimos que case.
   if (!candidates.length && leg.op === 'emt') candidates = ofOurLines;
@@ -92,6 +99,8 @@ export async function liveBoarding(it: Itinerary, signal?: AbortSignal): Promise
     leaveIn: Math.max(0, Math.floor(arrivesIn - walkBefore - SAFETY_MARGIN_MIN)),
     tight,
     later: later.slice(0, 2),
+    upcoming: reachable.filter((m) => m >= walkBefore + SAFETY_MARGIN_MIN),
+    walkBefore,
     totalMin: it.totalMin - estimatedBoarding + Math.max(arrivesIn, walkBefore),
   };
 }

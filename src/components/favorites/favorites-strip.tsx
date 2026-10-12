@@ -4,13 +4,11 @@ import { Pressable, ScrollView, View } from 'react-native';
 
 import { LineBadge } from '@/components/ui/line-badge';
 import { Text } from '@/components/ui/text';
-import { placeByKey } from '@/data/places';
 import { useFavoriteLive } from '@/hooks/use-favorite-live';
-import { inDepartureWindow, scheduleLeaveNow } from '@/lib/alerts';
+import { useRangeAlerts } from '@/hooks/use-range-alerts';
+import { inDepartureWindow } from '@/lib/alerts';
 import { scheduleLabel, type Favorite } from '@/lib/favorites';
 import type { LngLat } from '@/lib/geo';
-import { SAFETY_MARGIN_MIN } from '@/lib/live-leg';
-import { addMinutes, clock } from '@/lib/time-format';
 import { palette } from '@/theme/palette';
 
 type Props = {
@@ -18,10 +16,11 @@ type Props = {
   location: LngLat | null;
   onOpen(f: Favorite): void;
   onEdit(f: Favorite): void;
+  onSeeAll(): void;
 };
 
 /** "Tus rutas": accesos rápidos; en su franja de salida se vuelven un contador en directo. */
-export function FavoritesStrip({ favorites, location, onOpen, onEdit }: Props) {
+export function FavoritesStrip({ favorites, location, onOpen, onEdit, onSeeAll }: Props) {
   // Reevaluamos cada minuto qué favoritos están en su ventana de salida.
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -35,7 +34,12 @@ export function FavoritesStrip({ favorites, location, onOpen, onEdit }: Props) {
 
   return (
     <View className="pb-1">
-      <Text className="px-4 pb-2 font-jk-bold text-[12px] uppercase tracking-[1.2px] text-fg-muted">Tus rutas</Text>
+      <View className="flex-row items-center justify-between px-4 pb-2">
+        <Text className="font-jk-bold text-[12px] uppercase tracking-[1.2px] text-fg-muted">Tus rutas</Text>
+        <Pressable onPress={onSeeAll} hitSlop={8}>
+          <Text className="font-jk-semibold text-[12px] text-accent">Ver todas</Text>
+        </Pressable>
+      </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2.5 px-3">
         {sorted.map((f) => (
           <FavoriteCard key={f.id} fav={f} location={location} active={inDepartureWindow(f, now)} onOpen={() => onOpen(f)} onEdit={() => onEdit(f)} />
@@ -49,17 +53,8 @@ function FavoriteCard({ fav, location, active, onOpen, onEdit }: { fav: Favorite
   const best = useFavoriteLive(fav, location, active);
   const live = best?.live.status === 'live' ? best.live : null;
 
-  // Programa el "¡Sal ya!" exacto con los datos en directo (se reajusta si cambian).
-  useEffect(() => {
-    if (!live || !best?.firstRide || live.leaveIn < 1) return;
-    const stop = placeByKey.get(best.firstRide.fromKey)?.name ?? 'tu parada';
-    const leaveAt = addMinutes(new Date(), live.leaveIn);
-    scheduleLeaveNow(
-      fav,
-      leaveAt,
-      `El ${live.line} pasa por ${stop} a las ${clock(addMinutes(new Date(), live.arrivesIn))}. Saliendo ahora llegas ${SAFETY_MARGIN_MIN} min antes.`,
-    ).catch(() => {});
-  }, [fav, best, live]);
+  // Un "¡Sal ya!" por cada vehículo que se puede coger dentro de la franja.
+  useRangeAlerts(fav, best);
 
   const urgent = live && (live.leaveIn <= 1 || live.tight);
 
