@@ -1,11 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, TextInput, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, SlideInDown } from 'react-native-reanimated';
+import { Platform, Pressable, ScrollView, Switch, TextInput, useWindowDimensions, View } from 'react-native';
+import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/ui/text';
+import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { alertsSupported, alertsUnavailableReason } from '@/lib/alerts';
 import { FAVORITE_ICONS, shiftTime, timeToMinutes, type Favorite, type FavoriteIcon, type Schedule } from '@/lib/favorites';
 import { palette } from '@/theme/palette';
@@ -36,6 +37,8 @@ const MIN_RANGE = 10;
 
 export function SaveRouteSheet({ favorite, isNew, onSave, onDelete, onClose }: Props) {
   const insets = useSafeAreaInsets();
+  const { height: screenH } = useWindowDimensions();
+  const keyboard = useKeyboardHeight();
   const [name, setName] = useState(favorite.name);
   const [icon, setIcon] = useState<FavoriteIcon>(favorite.icon);
   const [schedule, setSchedule] = useState(favorite.schedule);
@@ -64,9 +67,10 @@ export function SaveRouteSheet({ favorite, isNew, onSave, onDelete, onClose }: P
   return (
     <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(150)} style={{ position: 'absolute', inset: 0 }}>
       <Pressable onPress={onClose} style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)' }} accessibilityLabel="Cerrar" />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }} pointerEvents="box-none">
-        <Animated.View entering={SlideInDown.springify().damping(20)} style={{ maxHeight: '92%' }}>
-          <View className="rounded-t-[28px] border-t border-line bg-surface" style={{ paddingBottom: insets.bottom + 16 }}>
+      {/* Con el teclado abierto la hoja se apoya encima de él y se acorta (su contenido hace scroll). */}
+      <View style={{ flex: 1, justifyContent: 'flex-end', paddingBottom: keyboard }} pointerEvents="box-none">
+        <Animated.View entering={FadeInDown.duration(220)} style={{ maxHeight: screenH - keyboard - insets.top - 12 }}>
+          <View className="rounded-t-[28px] border-t border-line bg-surface" style={{ flexShrink: 1, paddingBottom: keyboard ? 12 : insets.bottom + 16 }}>
             <View className="items-center pt-3">
               <View className="h-[5px] w-10 rounded-full bg-white/20" />
             </View>
@@ -191,7 +195,7 @@ export function SaveRouteSheet({ favorite, isNew, onSave, onDelete, onClose }: P
             </ScrollView>
           </View>
         </Animated.View>
-      </KeyboardAvoidingView>
+      </View>
     </Animated.View>
   );
 }

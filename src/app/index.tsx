@@ -156,6 +156,15 @@ export default function MapScreen() {
     sheet.current?.snapToIndex(0);
   }, []);
 
+  /** "¿A dónde vas?" desde el mapa: búsqueda nueva, sin el origen/destino de la anterior. */
+  const newSearch = useCallback(() => {
+    setOriginChoice(null);
+    setDestination(null);
+    setItineraries([]);
+    setSelectedItId(null);
+    setScreen('search');
+  }, []);
+
   const savedFav = origin && destination ? favorites.find((f) => sameTrip(f, origin, destination)) : undefined;
 
   const openFavorite = useCallback(
@@ -196,10 +205,10 @@ export default function MapScreen() {
     Promise.resolve().then(() => {
       const f = fav ? favoritesStore.get().find((x) => x.id === fav) : undefined;
       if (f) openFavorite(f);
-      else if (search) setScreen('search');
+      else if (search) newSearch();
       router.setParams({ fav: undefined, search: undefined });
     });
-  }, [params, openFavorite]);
+  }, [params, openFavorite, newSearch]);
 
   /** "Cómo llegar" desde la ficha de una parada. */
   const directionsTo = useCallback(
@@ -243,7 +252,7 @@ export default function MapScreen() {
         onCenterChange={setCenter}
       />
 
-      {screen === 'map' && <TopBar modes={modes} onToggleMode={toggleMode} onSearch={() => setScreen('search')} onSaved={() => router.push('/saved')} />}
+      {screen === 'map' && <TopBar modes={modes} onToggleMode={toggleMode} onSearch={newSearch} onSaved={() => router.push('/saved')} />}
       {screen === 'map' && <MapFab sheetPosition={sheetPosition} onLocate={goToMe} active={status === 'granted'} />}
 
       <BottomSheet

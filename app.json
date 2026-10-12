@@ -21,7 +21,10 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "SCHEDULE_EXACT_ALARM"
+      ]
     },
     "web": {
       "output": "single",
@@ -42,6 +45,12 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "TransportCity usa tu ubicación para mostrarte las paradas cercanas y avisarte de cuándo salir."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#07080A"
         }
       ],
       "expo-font",
