@@ -169,15 +169,16 @@ export default function MapScreen() {
   // Llegadas desde otra pantalla ("Mis rutas"): ?fav=<id> abre ese favorito; ?search=1 abre el buscador.
   const params = useLocalSearchParams<{ fav?: string; search?: string }>();
   useEffect(() => {
-    if (params.fav) {
-      const f = favoritesStore.get().find((x) => x.id === params.fav);
+    const { fav, search } = params;
+    if (!fav && !search) return;
+    // La navegación es un evento externo: lo aplicamos fuera del ciclo del efecto.
+    Promise.resolve().then(() => {
+      const f = fav ? favoritesStore.get().find((x) => x.id === fav) : undefined;
       if (f) openFavorite(f);
-      router.setParams({ fav: undefined });
-    } else if (params.search) {
-      setScreen('search');
-      router.setParams({ search: undefined });
-    }
-  }, [params.fav, params.search, openFavorite]);
+      else if (search) setScreen('search');
+      router.setParams({ fav: undefined, search: undefined });
+    });
+  }, [params, openFavorite]);
 
   /** "Cómo llegar" desde la ficha de una parada. */
   const directionsTo = useCallback(
