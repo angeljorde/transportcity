@@ -18,6 +18,7 @@ import { NearbyList } from '@/components/sheet/nearby-list';
 import { PlaceDetail } from '@/components/sheet/place-detail';
 import { TopBar } from '@/components/top-bar';
 import { ALL_MODES, placeByKey, places, type Mode, type Place } from '@/data/places';
+import { useLineVehicles } from '@/hooks/use-line-vehicles';
 import { useLiveBoardings } from '@/hooks/use-live-boardings';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { alertsSupported } from '@/lib/alerts';
@@ -72,6 +73,8 @@ export default function MapScreen() {
 
   const live = useLiveBoardings(screen === 'routes' ? itineraries : []);
   const selectedIt = itineraries.find((it) => it.id === selectedItId) ?? null;
+  // Vehículos en directo (posición estimada) de las líneas de la ruta elegida.
+  const vehicles = useLineVehicles(screen === 'routes' ? selectedIt : null);
   const drawing = useMemo(
     () => (screen === 'routes' && selectedIt && origin && destination ? drawItinerary(selectedIt, origin.coord, destination.coord) : null),
     // origin cambia de identidad con cada lectura del GPS: dibujamos con la del momento de planificar.
@@ -93,10 +96,28 @@ export default function MapScreen() {
   }, [location, height]);
 
   // Encuadra la ruta elegida entre la barra superior y el sheet.
+  const framePadding = { top: insets.top + 40, bottom: height * 0.58 + 24, left: 48, right: 48 };
   useEffect(() => {
     if (!drawing) return;
-    map.current?.fitBounds(drawing.bounds, { top: insets.top + 40, bottom: height * 0.58 + 24, left: 48, right: 48 });
+    map.current?.fitBounds(drawing.bounds, framePadding);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawing, height, insets.top]);
+
+  // Cuando llegan los vehículos, re-encuadramos una vez para que se vea también el que viene
+  // hacia tu parada (el que vas a coger), aunque esté fuera del trayecto.
+  const framedWithVehicle = useRef<string | null>(null);
+  useEffect(() => {
+    if (!drawing || !selectedItId || framedWithVehicle.current === selectedItId) return;
+    const incoming = vehicles.features
+      .filter((f) => f.properties.toBoarding != null)
+      .sort((a, b) => a.properties.toBoarding! - b.properties.toBoarding!)[0];
+    if (!incoming) return;
+    framedWithVehicle.current = selectedItId;
+    const [x, y] = incoming.geometry.coordinates;
+    const [w, s, e, n] = drawing.bounds;
+    map.current?.fitBounds([Math.min(w, x), Math.min(s, y), Math.max(e, x), Math.max(n, y)], framePadding);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehicles, drawing, selectedItId]);
 
   const selectPlace = useCallback(
     (place: Place) => {
@@ -213,6 +234,7 @@ export default function MapScreen() {
         topInset={insets.top + (screen === 'map' ? TOP_BAR_HEIGHT : 16)}
         userLocation={location}
         route={drawing?.geojson ?? null}
+        vehicles={screen === 'routes' ? vehicles : null}
         onPlacePress={(key) => {
           const p = placeByKey.get(key);
           if (p && screen === 'map') selectPlace(p);
@@ -243,6 +265,7 @@ export default function MapScreen() {
             onSelect={setSelectedItId}
             onEdit={() => setScreen('search')}
             onClose={closeRoutes}
+            vehicleCount={vehicles.features.length}
             saved={!!savedFav}
             onSave={startSave}
           />

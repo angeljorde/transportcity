@@ -2,6 +2,7 @@
 import { placesGeoJSON } from '@/data/places';
 import { VALENCIA_CENTER } from '@/lib/geo';
 import { darkMapStyle } from '@/theme/map-style';
+import { VEHICLE_ICON_PATHS, VEHICLE_ICON_PX } from '@/theme/vehicle-icons';
 
 import {
   meDotLayer,
@@ -10,6 +11,9 @@ import {
   PLACES_SOURCE,
   routeLayers,
   ROUTE_SOURCE,
+  VEHICLE_ICON_SIZE,
+  vehicleLayers,
+  VEHICLES_SOURCE,
   selectedHaloLayer,
   selectedLayer,
   stationsLabelLayer,
@@ -37,6 +41,10 @@ export function buildHtml(topInset: number): string {
     meLayers: [meHaloLayer, meDotLayer],
     routeSource: ROUTE_SOURCE,
     routeLayers,
+    vehSource: VEHICLES_SOURCE,
+    vehLayers: vehicleLayers(VEHICLE_ICON_SIZE.web),
+    vehIcons: VEHICLE_ICON_PATHS,
+    vehPx: VEHICLE_ICON_PX,
   };
   // `</` escapado para que ningún nombre de parada cierre el <script>.
   const initJson = JSON.stringify(init).replace(/<\//g, '<\\/');
@@ -66,6 +74,14 @@ export function buildHtml(topInset: number): string {
     I.placeLayers.forEach(function(l){ map.addLayer(Object.assign({}, l, { source:I.placesSource })); });
     map.addSource(I.routeSource, { type:'geojson', data:EMPTY });
     I.routeLayers.forEach(function(l){ map.addLayer(Object.assign({}, l, { source:I.routeSource })); });
+    Object.keys(I.vehIcons).forEach(function(name){
+      var c = document.createElement('canvas'); c.width = c.height = I.vehPx;
+      var ctx = c.getContext('2d'); ctx.scale(I.vehPx / 28, I.vehPx / 28); ctx.translate(2, 2);
+      ctx.fillStyle = '#fff'; ctx.fill(new Path2D(I.vehIcons[name]), 'evenodd');
+      map.addImage(name, ctx.getImageData(0, 0, I.vehPx, I.vehPx), { pixelRatio: 2 });
+    });
+    map.addSource(I.vehSource, { type:'geojson', data:EMPTY });
+    I.vehLayers.forEach(function(l){ map.addLayer(Object.assign({}, l, { source:I.vehSource })); });
     map.addSource(I.meSource, { type:'geojson', data:EMPTY });
     I.meLayers.forEach(function(l){ map.addLayer(Object.assign({}, l, { source:I.meSource })); });
     var a = document.querySelector('.maplibregl-ctrl-attrib'); if (a) a.classList.remove('maplibregl-compact-show');
@@ -85,6 +101,18 @@ export function buildHtml(topInset: number): string {
       map.setFilter('selected', s.filters.selected); map.setFilter('selected-halo', s.filters.selected);
       map.getSource(I.meSource).setData(s.me ? { type:'Point', coordinates:s.me } : EMPTY);
       map.getSource(I.routeSource).setData(s.route || EMPTY);
+    },
+    vehicles: function(v){
+      if (!ready) return;
+      // Si el mapa aún carga teselas, aplicamos en el siguiente 'idle' (solo el último dato).
+      // …pero nunca más de 6 s sin dibujarlos.
+      window.__veh = v || EMPTY;
+      var apply = function(){ window.__vehAt = Date.now(); map.getSource(I.vehSource).setData(window.__veh); };
+      if (map.loaded() || Date.now() - (window.__vehAt || 0) > 6000) apply();
+      else if (!window.__vehWaiting) {
+        window.__vehWaiting = true;
+        map.once('idle', function(){ window.__vehWaiting = false; apply(); });
+      }
     },
     fitBounds: function(b, padding){
       map.setPadding({ top:0, bottom:0, left:0, right:0 });

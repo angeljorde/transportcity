@@ -20,6 +20,7 @@ export function WebViewMap({
   topInset,
   userLocation,
   route,
+  vehicles,
   onPlacePress,
   onMapPress,
   onCenterChange,
@@ -47,6 +48,11 @@ export function WebViewMap({
   useEffect(() => {
     run(`window.tc && window.tc.update(${state})`);
   }, [state]);
+
+  // Los vehículos cambian cada segundo: mensaje aparte y ligero.
+  useEffect(() => {
+    run(`window.tc && window.tc.vehicles(${JSON.stringify(vehicles ?? null)})`);
+  }, [vehicles]);
 
   const onMessage = (e: WebViewMessageEvent) => {
     let msg: Outgoing;

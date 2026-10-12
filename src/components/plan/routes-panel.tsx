@@ -25,6 +25,8 @@ type Props = {
   onClose(): void;
   saved: boolean;
   onSave(): void;
+  /** Vehículos en directo dibujados en el mapa para la ruta elegida. */
+  vehicleCount: number;
 };
 
 const liveTotal = (it: Itinerary, live: Map<string, LiveBoarding>) => {
@@ -32,7 +34,7 @@ const liveTotal = (it: Itinerary, live: Map<string, LiveBoarding>) => {
   return l?.status === 'live' ? l.totalMin : it.totalMin;
 };
 
-export function RoutesPanel({ origin, destination, itineraries, live, selectedId, onSelect, onEdit, onClose, saved, onSave }: Props) {
+export function RoutesPanel({ origin, destination, itineraries, live, selectedId, onSelect, onEdit, onClose, saved, onSave, vehicleCount }: Props) {
   const insets = useSafeAreaInsets();
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -117,7 +119,10 @@ export function RoutesPanel({ origin, destination, itineraries, live, selectedId
               </Animated.View>
             )}
             {it.id === selectedId && expanded !== it.id && (
-              <Text className="-mt-1 mb-3 text-center text-[11px] text-fg-subtle">Toca otra vez para ver los pasos</Text>
+              <Text className="-mt-1 mb-3 text-center text-[11px] text-fg-subtle">
+                {vehicleCount > 0 ? `${vehicleCount} ${vehicleCount === 1 ? 'vehículo' : 'vehículos'} en directo en el mapa · ` : ''}
+                Toca otra vez para ver los pasos
+              </Text>
             )}
           </Animated.View>
         ))

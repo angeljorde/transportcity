@@ -19,6 +19,8 @@ export type TransitMapProps = {
   userLocation: LngLat | null;
   /** Itinerario a dibujar (ver lib/route-geo.ts). */
   route?: GeoJSON.FeatureCollection | null;
+  /** Vehículos en directo (posición estimada) de las líneas de la ruta. */
+  vehicles?: GeoJSON.FeatureCollection | null;
   onPlacePress(key: string): void;
   onMapPress?(): void;
   /** Se llama al terminar de mover el mapa, con el nuevo centro. */

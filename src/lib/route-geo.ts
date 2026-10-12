@@ -7,7 +7,7 @@ import { lineColor } from '@/theme/lines';
 import type { LngLat } from './geo';
 import type { Itinerary } from './router';
 
-export type RouteFeatureProps = { kind: 'walk' | 'ride' | 'stop' | 'origin' | 'dest'; color?: string };
+export type RouteFeatureProps = { kind: 'line' | 'walk' | 'ride' | 'stop' | 'origin' | 'dest'; color?: string };
 export type Bounds = [west: number, south: number, east: number, north: number];
 
 export type RouteDrawing = { geojson: FeatureCollection; bounds: Bounds };
@@ -30,6 +30,11 @@ export function drawItinerary(it: Itinerary, origin: LngLat, destination: LngLat
     properties: props,
   });
 
+  // Recorrido completo de cada línea usada, debajo del tramo que se hace (contexto + vehículos).
+  for (const leg of it.legs) {
+    if (leg.kind === 'ride') features.push(line(leg.pattern.shape, { kind: 'line', color: lineColor(leg.line, leg.op) }));
+  }
+
   for (const leg of it.legs) {
     if (leg.kind === 'walk') {
       features.push(line([leg.from, leg.to], { kind: 'walk' }));
@@ -48,6 +53,8 @@ export function drawItinerary(it: Itinerary, origin: LngLat, destination: LngLat
   // Caja que contiene todo el recorrido
   let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
   for (const f of features) {
+    // La línea entera no cuenta: el encuadre es para el trayecto del usuario.
+    if ((f.properties as RouteFeatureProps).kind === 'line') continue;
     const coords = f.geometry.type === 'Point' ? [f.geometry.coordinates] : (f.geometry as GeoJSON.LineString).coordinates;
     for (const [x, y] of coords) {
       w = Math.min(w, x);

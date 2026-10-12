@@ -1,4 +1,4 @@
-import { Camera, GeoJSONSource, Layer, Map, type CameraRef } from '@maplibre/maplibre-react-native';
+import { Camera, GeoJSONSource, Images, Layer, Map, type CameraRef } from '@maplibre/maplibre-react-native';
 import { useImperativeHandle, useMemo, useRef, type Ref } from 'react';
 import { StyleSheet } from 'react-native';
 
@@ -13,6 +13,9 @@ import {
   PLACES_SOURCE,
   routeLayers,
   ROUTE_SOURCE,
+  VEHICLE_ICON_SIZE,
+  vehicleLayers,
+  VEHICLES_SOURCE,
   selectedHaloLayer,
   selectedLayer,
   stationsLabelLayer,
@@ -29,6 +32,7 @@ export function NativeMap({
   topInset,
   userLocation,
   route,
+  vehicles,
   onPlacePress,
   onMapPress,
   onCenterChange,
@@ -84,6 +88,21 @@ export function NativeMap({
       {route && (
         <GeoJSONSource id={ROUTE_SOURCE} data={route}>
           {routeLayers.map((l) => (
+            <Layer key={l.id} {...l} />
+          ))}
+        </GeoJSONSource>
+      )}
+
+      <Images
+        images={{
+          'veh-bus': require('@/assets/map/veh-bus.png'),
+          'veh-metro': require('@/assets/map/veh-metro.png'),
+          'veh-tram': require('@/assets/map/veh-tram.png'),
+        }}
+      />
+      {vehicles && (
+        <GeoJSONSource id={VEHICLES_SOURCE} data={vehicles}>
+          {vehicleLayers(VEHICLE_ICON_SIZE.native).map((l) => (
             <Layer key={l.id} {...l} />
           ))}
         </GeoJSONSource>

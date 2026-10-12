@@ -15,6 +15,7 @@ import { useEffect, useEffectEvent, useImperativeHandle, useRef, type Ref } from
 import { placesGeoJSON } from '@/data/places';
 import { VALENCIA_CENTER } from '@/lib/geo';
 import { darkMapStyle } from '@/theme/map-style';
+import { VEHICLE_ICON_PATHS, type VehicleIcon } from '@/theme/vehicle-icons';
 
 import {
   filters,
@@ -24,6 +25,9 @@ import {
   PLACES_SOURCE,
   routeLayers,
   ROUTE_SOURCE,
+  VEHICLE_ICON_SIZE,
+  vehicleLayers,
+  VEHICLES_SOURCE,
   selectedHaloLayer,
   selectedLayer,
   stationsLabelLayer,
@@ -32,11 +36,13 @@ import {
   stopsLayer,
 } from './layers';
 import type { TransitMapHandle, TransitMapProps } from './types';
+import { vehicleImage } from './vehicle-images';
 
 // Worker copiado a public/ en postinstall (ver scripts/copy-maplibre-worker.mjs).
 setWorkerUrl('/maplibre-gl-worker.mjs');
 
 const EMPTY: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
+const VEHICLES_MAX_DELAY = 6_000;
 
 // maplibre-gl trae su propia copia (más nueva) de la style-spec; las capas están tipadas con la
 // de maplibre-react-native. El JSON es idéntico: solo convertimos el tipo.
@@ -53,6 +59,7 @@ export function TransitMap({
   topInset,
   userLocation,
   route,
+  vehicles,
   onPlacePress,
   onMapPress,
   onCenterChange,
@@ -109,6 +116,10 @@ export function TransitMap({
       m.addSource(ROUTE_SOURCE, { type: 'geojson', data: EMPTY });
       for (const l of routeLayers) m.addLayer(gl.layer(l, ROUTE_SOURCE));
 
+      for (const name of Object.keys(VEHICLE_ICON_PATHS) as VehicleIcon[]) m.addImage(name, vehicleImage(name), { pixelRatio: 2 });
+      m.addSource(VEHICLES_SOURCE, { type: 'geojson', data: EMPTY });
+      for (const l of vehicleLayers(VEHICLE_ICON_SIZE.web)) m.addLayer(gl.layer(l, VEHICLES_SOURCE));
+
       m.addSource(ME_SOURCE, { type: 'geojson', data: EMPTY });
       m.addLayer(gl.layer(meHaloLayer, ME_SOURCE));
       m.addLayer(gl.layer(meDotLayer, ME_SOURCE));
@@ -162,6 +173,26 @@ export function TransitMap({
     if (ready.current) apply();
     else pendingSync.current = apply;
   }, [selectedKey, userLocation, modesKey, route]);
+
+  // Vehículos: se actualizan cada pocos segundos. Si el mapa aún está cargando teselas,
+  // esperamos a que quede inactivo (actualizar la fuente sin parar impedía terminar de pintar),
+  // pero nunca más de VEHICLES_MAX_DELAY: los vehículos no pueden quedarse sin dibujar.
+  const vehiclesAppliedAt = useRef(0);
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !ready.current) return;
+    const apply = () => {
+      vehiclesAppliedAt.current = Date.now();
+      (m.getSource(VEHICLES_SOURCE) as GeoJSONSource | undefined)?.setData(vehicles ?? EMPTY);
+    };
+    if (m.loaded() || Date.now() - vehiclesAppliedAt.current > VEHICLES_MAX_DELAY) apply();
+    else {
+      m.once('idle', apply);
+      return () => {
+        m.off('idle', apply);
+      };
+    }
+  }, [vehicles]);
 
   // La atribución va arriba a la derecha, por debajo de la barra de búsqueda y los chips.
   useEffect(() => {

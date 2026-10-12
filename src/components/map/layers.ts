@@ -161,6 +161,14 @@ const kindIs = (k: string): FilterSpecification => ['==', ['get', 'kind'], k];
 
 export const routeLayers: (Line | Circle)[] = [
   {
+    // Línea entera (tenue) por la que circulan los vehículos
+    id: 'route-line-full',
+    type: 'line',
+    filter: kindIs('line'),
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-opacity': 0.35 },
+  },
+  {
     id: 'route-walk',
     type: 'line',
     filter: kindIs('walk'),
@@ -201,3 +209,38 @@ export const routeLayers: (Line | Circle)[] = [
     paint: { 'circle-color': palette.ink.DEFAULT, 'circle-radius': 8, 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 4 },
   },
 ];
+
+// ---------- vehículos en directo ----------
+
+export const VEHICLES_SOURCE = 'vehicles';
+
+/**
+ * Círculo del color de la línea con el pictograma blanco encima. `iconSize` depende de la
+ * plataforma: en web la imagen se registra a pixelRatio 2 (32 px) y en nativo el PNG mide 64.
+ */
+export const vehicleLayers = (iconSize: number): (Circle | Symbol)[] => [
+  {
+    id: 'veh-bg',
+    type: 'circle',
+    paint: {
+      'circle-color': ['get', 'color'],
+      'circle-radius': 13,
+      'circle-stroke-color': '#FFFFFF',
+      'circle-stroke-width': 2.5,
+      'circle-pitch-alignment': 'map',
+    },
+  },
+  {
+    id: 'veh-icon',
+    type: 'symbol',
+    layout: {
+      'icon-image': ['get', 'icon'],
+      'icon-size': iconSize,
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
+    },
+  },
+];
+
+/** icon-size para web/WebView (imagen de 64 px registrada a pixelRatio 2 → 32 px) y nativo (64 px). */
+export const VEHICLE_ICON_SIZE = { web: 0.56, native: 0.28 };
