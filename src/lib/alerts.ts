@@ -1,5 +1,5 @@
 /**
- * Avisos de salida con notificaciones locales (funcionan con la app cerrada y en Expo Go).
+ * Avisos de salida con notificaciones locales (funcionan con la app cerrada).
  *
  * 1. Recordatorio semanal: los días elegidos, `advanceMin` antes de la hora de salida.
  * 2. "¡Sal ya!" exacto: cuando la app está abierta en la ventana de salida (o se abre desde
@@ -8,29 +8,55 @@
  *
  * Avisos 100 % automáticos con datos en directo y la app cerrada requieren push desde un
  * servidor (siguiente fase; ver docs).
+ *
+ * ⚠️ Desde el SDK 53, `expo-notifications` LANZA un error al importarse en Expo Go para
+ * Android. Por eso se carga de forma perezosa y solo donde se puede usar: en web y en
+ * Expo Go/Android los avisos se desactivan y el resto de la app funciona igual.
  */
-import * as Notifications from 'expo-notifications';
+import { isRunningInExpoGo } from 'expo';
+import type * as NotificationsModule from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import type { Favorite } from './favorites';
 
-export const alertsSupported = Platform.OS !== 'web';
-const CHANNEL = 'salidas';
+type Notif = typeof NotificationsModule;
 
-if (alertsSupported) {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
-  });
+/** Por qué no hay avisos en esta plataforma (null = sí hay). */
+export const alertsUnavailableReason: string | null =
+  Platform.OS === 'web'
+    ? 'Disponible en la app de iOS y Android'
+    : Platform.OS === 'android' && isRunningInExpoGo()
+      ? 'No disponible en Expo Go para Android: funciona en la app instalada'
+      : null;
+
+let mod: Notif | null = null;
+if (alertsUnavailableReason == null) {
+  try {
+    // require perezoso: importarlo arriba rompería la app entera en Expo Go/Android.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    mod = require('expo-notifications') as Notif;
+    mod.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+  } catch {
+    mod = null;
+  }
 }
+
+/** Módulo de notificaciones, o null si no se puede usar aquí. */
+export const getNotifications = (): Notif | null => mod;
+export const alertsSupported = mod != null;
+const CHANNEL = 'salidas';
 
 /** Pide permiso si hace falta. Devuelve si se pueden enviar avisos. */
 export async function ensureAlertPermission(): Promise<boolean> {
-  if (!alertsSupported) return false;
+  const Notifications = mod;
+  if (!Notifications) return false;
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync(CHANNEL, {
       name: 'Avisos de salida',
@@ -51,7 +77,8 @@ const parseTime = (t: string) => {
 
 /** Cancela los recordatorios anteriores del favorito y programa los nuevos. Devuelve sus ids. */
 export async function scheduleFavorite(fav: Favorite): Promise<string[]> {
-  if (!alertsSupported) return [];
+  const Notifications = mod;
+  if (!Notifications) return [];
   await cancelFavorite(fav);
   if (!fav.schedule.enabled || !fav.schedule.days.length) return [];
   if (!(await ensureAlertPermission())) return [];
@@ -86,7 +113,8 @@ export async function scheduleFavorite(fav: Favorite): Promise<string[]> {
 }
 
 export async function cancelFavorite(fav: Favorite) {
-  if (!alertsSupported) return;
+  const Notifications = mod;
+  if (!Notifications) return;
   await Promise.all(fav.notificationIds.map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => {})));
   await cancelLeaveNow(fav.id);
 }
@@ -95,7 +123,8 @@ export async function cancelFavorite(fav: Favorite) {
 const leaveNowIds = new Map<string, { id: string; at: number }>();
 
 export async function scheduleLeaveNow(fav: Favorite, leaveAt: Date, detail: string) {
-  if (!alertsSupported) return;
+  const Notifications = mod;
+  if (!Notifications) return;
   const prev = leaveNowIds.get(fav.id);
   // Evita reprogramar por cambios de segundos: solo si se mueve 1 min o más.
   if (prev && Math.abs(prev.at - leaveAt.getTime()) < 60_000) return;
@@ -111,9 +140,9 @@ export async function scheduleLeaveNow(fav: Favorite, leaveAt: Date, detail: str
 
 async function cancelLeaveNow(favId: string) {
   const prev = leaveNowIds.get(favId);
-  if (!prev) return;
+  if (!prev || !mod) return;
   leaveNowIds.delete(favId);
-  await Notifications.cancelScheduledNotificationAsync(prev.id).catch(() => {});
+  await mod.cancelScheduledNotificationAsync(prev.id).catch(() => {});
 }
 
 /** ¿Estamos ahora en la ventana de salida del favorito? (desde el aviso hasta 30 min después de la hora) */

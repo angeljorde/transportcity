@@ -6,7 +6,7 @@ import Animated, { FadeIn, FadeOut, SlideInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/ui/text';
-import { alertsSupported } from '@/lib/alerts';
+import { alertsSupported, alertsUnavailableReason } from '@/lib/alerts';
 import { FAVORITE_ICONS, type Favorite, type FavoriteIcon } from '@/lib/favorites';
 import { palette } from '@/theme/palette';
 
@@ -108,7 +108,7 @@ export function SaveRouteSheet({ favorite, isNew, onSave, onDelete, onClose }: P
                 <View className="flex-1 pr-3">
                   <Text className="font-jk-bold text-[15px]">Avisarme para salir</Text>
                   <Text className="mt-0.5 text-[12px] text-fg-muted">
-                    {alertsSupported ? 'Te recordamos la ruta y te decimos el momento exacto' : 'Disponible en la app de iOS y Android'}
+                    {alertsSupported ? 'Te recordamos la ruta y te decimos el momento exacto' : (alertsUnavailableReason ?? 'No disponible en este dispositivo')}
                   </Text>
                 </View>
                 <Switch
