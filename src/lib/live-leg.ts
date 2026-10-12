@@ -26,6 +26,8 @@ export type LiveBoarding =
       later: number[];
       /** Todos los vehículos que se cogen con margen (min hasta que llegan a la parada). */
       upcoming: number[];
+      /** Margen con el que se ha calculado (min antes de que pase el vehículo). */
+      margin: number;
       /** Minutos andando hasta la parada de subida. */
       walkBefore: number;
       /** Total del itinerario con la espera real en lugar de la estimada. */
@@ -52,7 +54,7 @@ export function goesOurWay(pattern: Pattern, fromIdx: number, destination: strin
   });
 }
 
-export async function liveBoarding(it: Itinerary, signal?: AbortSignal): Promise<LiveBoarding> {
+export async function liveBoarding(it: Itinerary, signal?: AbortSignal, margin = SAFETY_MARGIN_MIN): Promise<LiveBoarding> {
   const firstRide = it.legs.findIndex((l) => l.kind === 'ride');
   if (firstRide < 0) return { status: 'unavailable' };
   const leg = it.legs[firstRide] as RideLeg;
@@ -86,7 +88,7 @@ export async function liveBoarding(it: Itinerary, signal?: AbortSignal): Promise
 
   // Preferimos el primer vehículo que se coge con margen; si solo queda uno "a la carrera",
   // lo mostramos igualmente como justo.
-  const withMargin = reachable.findIndex((m) => m >= walkBefore + SAFETY_MARGIN_MIN);
+  const withMargin = reachable.findIndex((m) => m >= walkBefore + margin);
   const idx = withMargin >= 0 ? withMargin : 0;
   const tight = withMargin < 0;
   const arrivesIn = reachable[idx];
@@ -96,10 +98,11 @@ export async function liveBoarding(it: Itinerary, signal?: AbortSignal): Promise
     status: 'live',
     line: candidates.find((v) => v.minutes === arrivesIn)?.line ?? leg.line,
     arrivesIn,
-    leaveIn: Math.max(0, Math.floor(arrivesIn - walkBefore - SAFETY_MARGIN_MIN)),
+    leaveIn: Math.max(0, Math.floor(arrivesIn - walkBefore - margin)),
     tight,
     later: later.slice(0, 2),
-    upcoming: reachable.filter((m) => m >= walkBefore + SAFETY_MARGIN_MIN),
+    upcoming: reachable.filter((m) => m >= walkBefore + margin),
+    margin,
     walkBefore,
     totalMin: it.totalMin - estimatedBoarding + Math.max(arrivesIn, walkBefore),
   };

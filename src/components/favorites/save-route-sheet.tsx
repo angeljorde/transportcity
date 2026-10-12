@@ -34,6 +34,9 @@ const tap = () => Platform.OS !== 'web' && Haptics.selectionAsync();
 
 /** Duración mínima de la franja (min). */
 const MIN_RANGE = 10;
+/** Margen en la parada elegible (min). */
+const MARGIN_MIN = 1;
+const MARGIN_MAX = 15;
 
 export function SaveRouteSheet({ favorite, isNew, onSave, onDelete, onClose }: Props) {
   const insets = useSafeAreaInsets();
@@ -60,6 +63,8 @@ export function SaveRouteSheet({ favorite, isNew, onSave, onDelete, onClose }: P
       const to = shiftTime(s.to, delta);
       return timeToMinutes(to) - timeToMinutes(s.from) < MIN_RANGE ? s : { ...s, to };
     });
+  const setMargin = (delta: number) =>
+    setSchedule((s) => ({ ...s, marginMin: Math.min(MARGIN_MAX, Math.max(MARGIN_MIN, s.marginMin + delta)) }));
   const rangeMin = timeToMinutes(schedule.to) - timeToMinutes(schedule.from);
 
   const canSave = name.trim().length > 0 && (!schedule.enabled || schedule.days.length > 0);
@@ -163,12 +168,30 @@ export function SaveRouteSheet({ favorite, isNew, onSave, onDelete, onClose }: P
                   </View>
                   <Text className="mt-2 text-center text-[12px] text-fg-subtle">Franja de {rangeMin} min · cambia de 5 en 5 (mantén pulsado: de hora en hora)</Text>
 
+                  <Label>Margen en la parada</Label>
+                  <View className="flex-row items-center justify-between rounded-2xl border border-line bg-surface-raised py-2 pl-4 pr-1.5">
+                    <View className="flex-1 pr-3">
+                      <Text className="font-jk-bold text-[15px]">
+                        Llegar {schedule.marginMin} min antes
+                      </Text>
+                      <Text className="mt-0.5 text-[12px] text-fg-muted">de que pase el bus o metro</Text>
+                    </View>
+                    <View className="flex-row items-center gap-1">
+                      <Stepper icon="remove" disabled={schedule.marginMin <= MARGIN_MIN} onPress={() => setMargin(-1)} />
+                      <Text className="w-10 text-center font-jk-xbold text-[22px]" style={{ fontVariant: ['tabular-nums'] }}>
+                        {schedule.marginMin}
+                      </Text>
+                      <Stepper icon="add" disabled={schedule.marginMin >= MARGIN_MAX} onPress={() => setMargin(1)} />
+                    </View>
+                  </View>
+
                   <View className="mt-4 flex-row gap-3 rounded-2xl bg-accent-soft p-3.5">
                     <Ionicons name="notifications" size={18} color={palette.accent.DEFAULT} />
                     <Text className="flex-1 text-[13px] leading-[19px] text-fg">
                       A las <Text className="font-jk-bold text-[13px]">{schedule.from}</Text> te recordamos la ruta. Desde ese momento y hasta las{' '}
                       <Text className="font-jk-bold text-[13px]">{schedule.to}</Text> te avisamos con un «¡Sal ya!» de{' '}
-                      <Text className="font-jk-bold text-[13px]">cada bus o metro</Text> que puedas coger, con 3 min de margen en la parada.
+                      <Text className="font-jk-bold text-[13px]">cada bus o metro</Text> que puedas coger, para que llegues a la parada{' '}
+                      <Text className="font-jk-bold text-[13px]">{schedule.marginMin} min antes</Text> de que pase.
                     </Text>
                   </View>
                 </Animated.View>
@@ -219,9 +242,11 @@ function TimeStepper({ label, value, onChange }: { label: string; value: string;
   );
 }
 
-function Stepper({ icon, onPress, onLongPress }: { icon: 'add' | 'remove'; onPress(): void; onLongPress?(): void }) {
+function Stepper({ icon, onPress, onLongPress, disabled }: { icon: 'add' | 'remove'; onPress(): void; onLongPress?(): void; disabled?: boolean }) {
   return (
     <Pressable
+      disabled={disabled}
+      style={{ opacity: disabled ? 0.35 : 1 }}
       onPress={() => {
         tap();
         onPress();

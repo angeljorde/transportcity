@@ -162,7 +162,7 @@ function SavedRouteCard({ fav, now, location, onEdit }: { fav: Favorite; now: Da
                 </Text>
                 {live.upcoming.length > 1 && (
                   <Text className="text-[12px] text-fg-muted">
-                    Y luego en {live.upcoming.slice(1, 3).map((m) => Math.max(0, Math.round(m - live.walkBefore - 3))).join(' y ')} min
+                    Y luego en {live.upcoming.slice(1, 3).map((m) => Math.max(0, Math.round(m - live.walkBefore - live.margin))).join(' y ')} min
                   </Text>
                 )}
               </View>

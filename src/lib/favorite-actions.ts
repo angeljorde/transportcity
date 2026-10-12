@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 
 import { alertsSupported, cancelFavorite, scheduleFavorite } from './alerts';
 import type { Endpoint } from './endpoint';
-import { favoritesStore, newFavoriteId, type Favorite } from './favorites';
+import { DEFAULT_MARGIN_MIN, favoritesStore, newFavoriteId, type Favorite } from './favorites';
 
 /** Guarda (o actualiza) un favorito y reprograma sus avisos. */
 export async function saveFavorite(f: Favorite) {
@@ -26,7 +26,7 @@ export function draftFavorite(origin: Endpoint, destination: Endpoint): Favorite
     icon: 'star',
     origin: origin.isMe ? { name: 'Tu ubicación', coord: origin.coord, isMe: true } : origin,
     destination,
-    schedule: { enabled: alertsSupported, days: [1, 2, 3, 4, 5], from: '07:45', to: '08:30' },
+    schedule: { enabled: alertsSupported, days: [1, 2, 3, 4, 5], from: '07:45', to: '08:30', marginMin: DEFAULT_MARGIN_MIN },
     notificationIds: [],
     createdAt: Date.now(),
   };

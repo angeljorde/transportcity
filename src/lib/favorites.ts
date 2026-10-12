@@ -20,7 +20,11 @@ export type Schedule = {
   from: string;
   /** …hasta ("08:30"). Dentro de ella se avisa de cada vehículo que se puede coger. */
   to: string;
+  /** Minutos que se quiere llegar a la parada antes de que pase el vehículo. */
+  marginMin: number;
 };
+
+export const DEFAULT_MARGIN_MIN = 5;
 
 /** Suma minutos a "HH:MM" (con vuelta de medianoche). */
 export function shiftTime(t: string, deltaMin: number): string {
@@ -37,11 +41,11 @@ export const timeToMinutes = (t: string) => {
 /** Favoritos guardados con la versión anterior (hora + antelación) → franja equivalente. */
 function migrate(f: Favorite): Favorite {
   const old = f.schedule as Partial<Schedule> & { time?: string; advanceMin?: number };
-  if (old.from && old.to) return f;
+  if (old.from && old.to) return old.marginMin != null ? f : { ...f, schedule: { ...(old as Schedule), marginMin: DEFAULT_MARGIN_MIN } };
   const time = old.time ?? '08:00';
   return {
     ...f,
-    schedule: { enabled: !!old.enabled, days: old.days ?? [1, 2, 3, 4, 5], from: shiftTime(time, -(old.advanceMin ?? 10)), to: shiftTime(time, 20) },
+    schedule: { enabled: !!old.enabled, days: old.days ?? [1, 2, 3, 4, 5], from: shiftTime(time, -(old.advanceMin ?? 10)), to: shiftTime(time, 20), marginMin: DEFAULT_MARGIN_MIN },
   };
 }
 

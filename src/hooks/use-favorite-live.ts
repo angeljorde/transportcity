@@ -14,7 +14,8 @@ export type FavoriteLive = { itinerary: Itinerary; live: LiveBoarding; firstRide
  */
 export function useFavoriteLive(fav: Favorite, location: LngLat | null, active: boolean): FavoriteLive | null {
   const origin = fav.origin.isMe ? location : fav.origin.coord;
-  const key = active && origin ? `${fav.id}|${origin[0].toFixed(3)},${origin[1].toFixed(3)}` : null;
+  const margin = fav.schedule.marginMin;
+  const key = active && origin ? `${fav.id}|${margin}|${origin[0].toFixed(3)},${origin[1].toFixed(3)}` : null;
 
   const { data } = usePolling(
     key,
@@ -23,7 +24,7 @@ export function useFavoriteLive(fav: Favorite, location: LngLat | null, active: 
       if (!its.length) return null;
       // Probamos las 3 mejores con datos en directo y nos quedamos con la que antes te deja allí.
       const withLive = await Promise.all(
-        its.slice(0, 3).map(async (itinerary) => ({ itinerary, live: await liveBoarding(itinerary, signal).catch(() => ({ status: 'unavailable' }) as LiveBoarding) })),
+        its.slice(0, 3).map(async (itinerary) => ({ itinerary, live: await liveBoarding(itinerary, signal, margin).catch(() => ({ status: 'unavailable' }) as LiveBoarding) })),
       );
       const total = (x: (typeof withLive)[number]) => (x.live.status === 'live' ? x.live.totalMin : x.itinerary.totalMin);
       const best = withLive.sort((a, b) => total(a) - total(b))[0];
